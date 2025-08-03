@@ -1,0 +1,120 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id            String           @id @default(cuid())
+  email         String?          @unique
+  name          String
+  role          UserRole
+  phone         String?
+  createdAt     DateTime         @default(now())
+
+  sales         Sale[]           @relation("CreatedSales")
+  expenses      Expense[]
+
+  creditSales   CustomerOnSale[]
+}
+
+model Table {
+  id            String           @id @default(cuid())
+  name          String           // Örn: "Masa 1"
+  isOpen        Boolean          @default(true)
+  openedAt      DateTime         @default(now())
+  closedAt      DateTime?
+  customerName  String?          // Veresiye müşterisi için opsiyonel
+
+  sales         Sale[]
+}
+
+model Sale {
+  id            String           @id @default(cuid())
+  tableId       String
+  table         Table            @relation(fields: [tableId], references: [id])
+
+  saleItems     SaleItem[]
+  total         Float            @default(0)
+
+  isPaid        Boolean          @default(false)
+  paidAt        DateTime?
+  paymentType   PaymentType?
+  paidAmount    Float?
+
+  isOnCredit    Boolean          @default(false)
+  note          String?
+
+  createdById   String?
+  createdBy     User?            @relation("CreatedSales", fields: [createdById], references: [id])
+
+  customers     CustomerOnSale[] 
+
+  createdAt     DateTime         @default(now())
+}
+
+model SaleItem {
+  id           String           @id @default(cuid())
+  saleId       String
+  productId    String
+  quantity     Int
+  unitPrice    Float            // Satış anındaki fiyat
+
+  sale         Sale             @relation(fields: [saleId], references: [id])
+  product      Product          @relation(fields: [productId], references: [id])
+}
+
+model Product {
+  id           String           @id @default(cuid())
+  name         String
+  price        Float
+  isAvailable  Boolean          @default(true)
+  createdAt    DateTime         @default(now())
+
+  saleItems    SaleItem[]
+}
+
+model Expense {
+  id             String           @id @default(cuid())
+  date           DateTime         @default(now())
+  amount         Float
+  category       ExpenseCategory
+  description    String?
+  createdById    String?
+  createdBy      User?            @relation(fields: [createdById], references: [id])
+}
+
+model CustomerOnSale {
+  id           String           @id @default(cuid())
+  saleId       String
+  customerId   String
+  amountOwed   Float?
+
+  sale         Sale             @relation(fields: [saleId], references: [id])
+  customer     User             @relation(fields: [customerId], references: [id])
+}
+
+enum UserRole {
+  ADMIN
+  STAFF
+  CUSTOMER
+}
+
+enum PaymentType {
+  CASH
+  CARD
+  FOOD_TICKET
+  OTHER
+}
+
+enum ExpenseCategory {
+  RENT
+  BILL
+  SUPPLY
+  SALARY
+  TAX
+  OTHER
+}

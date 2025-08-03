@@ -1,0 +1,172 @@
+"use client";
+
+import React, { useState, useEffect } from "react";
+import { Table } from "@/types";
+import { getAllTables, createTable } from "@/actions/table";
+
+interface TableSelectorProps {
+  selectedTable: Table | null;
+  onTableSelect: (table: Table) => void;
+  initialTables?: Table[];
+}
+
+const TableSelector: React.FC<TableSelectorProps> = ({
+  selectedTable,
+  onTableSelect,
+  initialTables = []
+}) => {
+  const [tables, setTables] = useState<Table[]>(initialTables);
+  const [showCreateForm, setShowCreateForm] = useState(false);
+  const [newTableName, setNewTableName] = useState("");
+  const [newCustomerName, setNewCustomerName] = useState("");
+  const [isLoading, setIsLoading] = useState(false);
+
+  useEffect(() => {
+    loadTables();
+  }, []);
+
+  const loadTables = async () => {
+    try {
+      const allTables = await getAllTables();
+      const convertedTables = allTables.map(table => ({
+        ...table,
+        closedAt: table.closedAt || undefined,
+        customerName: table.customerName || undefined,
+      }));
+      setTables(convertedTables);
+    } catch (error) {
+      console.error("Failed to load tables:", error);
+    }
+  };
+
+  const handleCreateTable = async () => {
+    if (!newTableName.trim()) return;
+
+    setIsLoading(true);
+          try {
+        const createdTable = await createTable(newTableName, newCustomerName || undefined);
+        const newTable = {
+          ...createdTable,
+          closedAt: createdTable.closedAt || undefined,
+          customerName: createdTable.customerName || undefined,
+        };
+        setTables(prev => [newTable, ...prev]);
+        onTableSelect(newTable);
+        setNewTableName("");
+        setNewCustomerName("");
+        setShowCreateForm(false);
+      } catch (error) {
+        console.error("Failed to create table:", error);
+      }
+    setIsLoading(false);
+  };
+
+  const activeTables = tables.filter(table => table.isOpen);
+  const closedTables = tables.filter(table => !table.isOpen);
+
+  return (
+    <div className="space-y-4">
+      <div className="flex items-center justify-between">
+        <h3 className="text-lg font-semibold text-gray-800">Select Table</h3>
+        <button
+          onClick={() => setShowCreateForm(!showCreateForm)}
+          className="px-4 py-2 bg-emerald-600 text-white rounded-lg hover:bg-emerald-700 transition-colors"
+        >
+          {showCreateForm ? "Cancel" : "New Table"}
+        </button>
+      </div>
+
+      {showCreateForm && (
+        <div className="p-4 bg-gray-50 rounded-lg space-y-3">
+          <input
+            type="text"
+            placeholder="Table name"
+            value={newTableName}
+            onChange={(e) => setNewTableName(e.target.value)}
+            className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-transparent"
+          />
+          <input
+            type="text"
+            placeholder="Customer name (optional)"
+            value={newCustomerName}
+            onChange={(e) => setNewCustomerName(e.target.value)}
+            className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-transparent"
+          />
+          <button
+            onClick={handleCreateTable}
+            disabled={!newTableName.trim() || isLoading}
+            className="w-full px-4 py-2 bg-emerald-600 text-white rounded-lg hover:bg-emerald-700 disabled:bg-gray-400 transition-colors"
+          >
+            {isLoading ? "Creating..." : "Create Table"}
+          </button>
+        </div>
+      )}
+
+      {/* Active Tables */}
+      {activeTables.length > 0 && (
+        <div>
+          <h4 className="text-md font-medium text-gray-700 mb-2">Active Tables</h4>
+          <div className="grid grid-cols-2 gap-2">
+            {activeTables.map((table) => (
+              <button
+                key={table.id}
+                onClick={() => onTableSelect(table)}
+                className={`p-3 rounded-lg border-2 text-left transition-colors ${
+                  selectedTable?.id === table.id
+                    ? "border-emerald-500 bg-emerald-50 text-emerald-800"
+                    : "border-gray-200 hover:border-emerald-300 hover:bg-emerald-50"
+                }`}
+              >
+                <div className="font-medium">{table.name}</div>
+                {table.customerName && (
+                  <div className="text-sm text-gray-600">{table.customerName}</div>
+                )}
+                <div className="text-xs text-gray-500">
+                  Opened: {new Date(table.openedAt).toLocaleTimeString()}
+                </div>
+              </button>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {/* Closed Tables */}
+      {closedTables.length > 0 && (
+        <details className="space-y-2">
+          <summary className="text-md font-medium text-gray-700 cursor-pointer">
+            Recent Closed Tables ({closedTables.length})
+          </summary>
+          <div className="grid grid-cols-2 gap-2 mt-2">
+            {closedTables.slice(0, 6).map((table) => (
+              <button
+                key={table.id}
+                onClick={() => onTableSelect(table)}
+                className={`p-3 rounded-lg border-2 text-left transition-colors opacity-60 ${
+                  selectedTable?.id === table.id
+                    ? "border-emerald-500 bg-emerald-50 text-emerald-800"
+                    : "border-gray-200 hover:border-emerald-300 hover:bg-emerald-50"
+                }`}
+              >
+                <div className="font-medium">{table.name}</div>
+                {table.customerName && (
+                  <div className="text-sm text-gray-600">{table.customerName}</div>
+                )}
+                <div className="text-xs text-gray-500">
+                  Closed: {table.closedAt ? new Date(table.closedAt).toLocaleTimeString() : "N/A"}
+                </div>
+              </button>
+            ))}
+          </div>
+        </details>
+      )}
+
+      {tables.length === 0 && (
+        <div className="text-center text-gray-500 py-4">
+          No tables available. Create a new table to get started.
+        </div>
+      )}
+    </div>
+  );
+};
+
+export default TableSelector; 

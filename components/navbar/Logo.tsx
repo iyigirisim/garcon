@@ -2,7 +2,6 @@
 import Image from "next/image";
 import { useEffect, useState } from "react";
 import Link from "next/link";
-import Button from "./Button";
 
 const Logo = () => {
   const [width, setWidth] = useState(0);
@@ -42,13 +41,6 @@ const Logo = () => {
           className="relative"
         />
       </Link>
-      <div
-        style={{
-          display: showButton ? "block" : "none",
-        }}
-      >
-        <Button />
-      </div>
     </>
   );
 };
