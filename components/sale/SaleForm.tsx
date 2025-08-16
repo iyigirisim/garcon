@@ -10,6 +10,7 @@ import {
   PaymentSection,
 } from "@/components/sale";
 import { createSale, addItemToSale } from "@/actions/table";
+import { useTableSalesCache } from "@/hooks/useTableSalesCache";
 
 interface SaleFormProps {
   initialTables?: Table[];
@@ -36,9 +37,28 @@ const SaleForm: React.FC<SaleFormProps> = ({ initialTables = [], onSaleComplete 
 
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isFinalizing, setIsFinalizing] = useState(false);
+  
+  const { loading: loadingExistingSale, getTableSales, invalidateTableCache } = useTableSalesCache();
 
   const updateSaleData = (updates: Partial<SaleFormData>) => {
     setSaleData(prev => ({ ...prev, ...updates }));
+  };
+
+  const handleTableSelect = async (table: Table, hasActiveSales?: boolean) => {
+    updateSaleData({ table });
+
+    if (hasActiveSales && table.isOpen) {
+      try {
+        const cachedData = await getTableSales(table.id);
+        updateSaleData({ saleItems: cachedData.combinedSaleItems });
+      } catch (error) {
+        console.error("Failed to load existing sales:", error);
+        updateSaleData({ saleItems: [] });
+      }
+    } else {
+      // Clear sale items for new tables or tables without active sales
+      updateSaleData({ saleItems: [] });
+    }
   };
 
   const addSaleItem = (product: Product, quantity: number) => {
@@ -113,6 +133,11 @@ const SaleForm: React.FC<SaleFormProps> = ({ initialTables = [], onSaleComplete 
 
       alert("Order saved successfully!");
       
+      // Invalidate cache for this table
+      if (saleData.table) {
+        invalidateTableCache(saleData.table.id);
+      }
+      
       // Reset form after saving
       setSaleData({
         table: null,
@@ -168,6 +193,11 @@ const SaleForm: React.FC<SaleFormProps> = ({ initialTables = [], onSaleComplete 
 
       alert(saleData.isOnCredit ? "Sale created on credit!" : "Sale completed successfully!");
       
+      // Invalidate cache for this table
+      if (saleData.table) {
+        invalidateTableCache(saleData.table.id);
+      }
+      
       // Reset form after completion
       setSaleData({
         table: null,
@@ -202,14 +232,16 @@ const SaleForm: React.FC<SaleFormProps> = ({ initialTables = [], onSaleComplete 
   return (
     <div className="max-w-full mx-auto p-6 space-y-6">
       <div className="bg-white rounded-lg shadow-md p-6">
-        <h1 className="text-2xl font-bold text-gray-800 mb-6">New Sale</h1>
+        <h1 className="text-2xl font-bold text-gray-800 mb-6">
+          {saleData.saleItems.length > 0 && saleData.table ? "Edit Order" : "New Sale"}
+        </h1>
         
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
           {/* Left Column */}
           <div className="space-y-6">
             <TableSelector
               selectedTable={saleData.table}
-              onTableSelect={(table) => updateSaleData({ table })}
+              onTableSelect={handleTableSelect}
               initialTables={initialTables}
             />
             
@@ -233,6 +265,7 @@ const SaleForm: React.FC<SaleFormProps> = ({ initialTables = [], onSaleComplete 
               onUpdateItem={updateSaleItem}
               onRemoveItem={removeSaleItem}
               total={calculateTotal()}
+              loading={loadingExistingSale}
             />
             
             {/* Payment Section - Only shown when finalizing */}

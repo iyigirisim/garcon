@@ -3,10 +3,17 @@
 import React, { useState, useEffect } from "react";
 import { Table } from "@/types";
 import { getAllTables, createTable } from "@/actions/table";
+import { useTableSalesCache } from "@/hooks/useTableSalesCache";
+
+interface TableWithSales extends Table {
+  hasActiveSales?: boolean;
+  activeItemsCount?: number;
+  currentTotal?: number;
+}
 
 interface TableSelectorProps {
   selectedTable: Table | null;
-  onTableSelect: (table: Table) => void;
+  onTableSelect: (table: Table, hasActiveSales?: boolean) => void;
   initialTables?: Table[];
 }
 
@@ -15,11 +22,13 @@ const TableSelector: React.FC<TableSelectorProps> = ({
   onTableSelect,
   initialTables = []
 }) => {
-  const [tables, setTables] = useState<Table[]>(initialTables);
+  const [tables, setTables] = useState<TableWithSales[]>(initialTables);
   const [showCreateForm, setShowCreateForm] = useState(false);
   const [newTableName, setNewTableName] = useState("");
   const [newCustomerName, setNewCustomerName] = useState("");
   const [isLoading, setIsLoading] = useState(false);
+  
+  const { getTableSales, getCachedSales, isCached } = useTableSalesCache();
 
   useEffect(() => {
     loadTables();
@@ -28,12 +37,55 @@ const TableSelector: React.FC<TableSelectorProps> = ({
   const loadTables = async () => {
     try {
       const allTables = await getAllTables();
-      const convertedTables = allTables.map(table => ({
-        ...table,
-        closedAt: table.closedAt || undefined,
-        customerName: table.customerName || undefined,
-      }));
-      setTables(convertedTables);
+      const tablesWithSales: TableWithSales[] = [];
+      
+      for (const table of allTables) {
+        const convertedTable: TableWithSales = {
+          ...table,
+          closedAt: table.closedAt || undefined,
+          customerName: table.customerName || undefined,
+        };
+
+        if (table.isOpen) {
+          try {
+            // Check cache first
+            const cached = getCachedSales(table.id);
+            if (cached) {
+              convertedTable.hasActiveSales = cached.combinedSaleItems.length > 0;
+              convertedTable.activeItemsCount = cached.totalItems;
+              convertedTable.currentTotal = cached.totalAmount;
+            } else {
+              // Load in background without blocking UI
+              getTableSales(table.id).then(salesData => {
+                const hasActiveSales = salesData.combinedSaleItems.length > 0;
+                if (hasActiveSales) {
+                  setTables(prev => prev.map(t => 
+                    t.id === table.id 
+                      ? { 
+                          ...t, 
+                          hasActiveSales: true,
+                          activeItemsCount: salesData.totalItems,
+                          currentTotal: salesData.totalAmount
+                        }
+                      : t
+                  ));
+                }
+              }).catch(error => {
+                console.error(`Failed to load sales for table ${table.id}:`, error);
+              });
+            }
+          } catch (error) {
+            console.error(`Failed to load sales for table ${table.id}:`, error);
+            convertedTable.hasActiveSales = false;
+            convertedTable.activeItemsCount = 0;
+            convertedTable.currentTotal = 0;
+          }
+        }
+        
+        tablesWithSales.push(convertedTable);
+      }
+      
+      setTables(tablesWithSales);
     } catch (error) {
       console.error("Failed to load tables:", error);
     }
@@ -51,7 +103,7 @@ const TableSelector: React.FC<TableSelectorProps> = ({
           customerName: createdTable.customerName || undefined,
         };
         setTables(prev => [newTable, ...prev]);
-        onTableSelect(newTable);
+        onTableSelect(newTable, false);
         setNewTableName("");
         setNewCustomerName("");
         setShowCreateForm(false);
@@ -110,17 +162,32 @@ const TableSelector: React.FC<TableSelectorProps> = ({
             {activeTables.map((table) => (
               <button
                 key={table.id}
-                onClick={() => onTableSelect(table)}
-                className={`p-3 rounded-lg border-2 text-left transition-colors ${
+                onClick={() => onTableSelect(table, table.hasActiveSales)}
+                className={`p-3 rounded-lg border-2 text-left transition-colors relative ${
                   selectedTable?.id === table.id
                     ? "border-emerald-500 bg-emerald-50 text-emerald-800"
-                    : "border-gray-200 hover:border-emerald-300 hover:bg-emerald-50"
+                    : table.hasActiveSales
+                      ? "border-orange-400 bg-orange-50 hover:border-orange-500"
+                      : "border-gray-200 hover:border-emerald-300 hover:bg-emerald-50"
                 }`}
               >
+                {/* Active sales indicator */}
+                {table.hasActiveSales && (
+                  <div className="absolute -top-1 -right-1 w-3 h-3 bg-orange-500 rounded-full"></div>
+                )}
+                
                 <div className="font-medium">{table.name}</div>
                 {table.customerName && (
                   <div className="text-sm text-gray-600">{table.customerName}</div>
                 )}
+                
+                {/* Show active sales info */}
+                {table.hasActiveSales && (
+                  <div className="text-xs text-orange-600 font-medium">
+                    {table.activeItemsCount} items • ₺{table.currentTotal?.toFixed(2)}
+                  </div>
+                )}
+                
                 <div className="text-xs text-gray-500">
                   Opened: {new Date(table.openedAt).toLocaleTimeString()}
                 </div>
@@ -140,7 +207,7 @@ const TableSelector: React.FC<TableSelectorProps> = ({
             {closedTables.slice(0, 6).map((table) => (
               <button
                 key={table.id}
-                onClick={() => onTableSelect(table)}
+                onClick={() => onTableSelect(table, false)}
                 className={`p-3 rounded-lg border-2 text-left transition-colors opacity-60 ${
                   selectedTable?.id === table.id
                     ? "border-emerald-500 bg-emerald-50 text-emerald-800"

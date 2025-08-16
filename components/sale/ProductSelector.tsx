@@ -24,8 +24,6 @@ const ProductSelector: React.FC<ProductSelectorProps> = ({ onProductAdd }) => {
 
   const categories = ["all", ...Array.from(new Set(availableProducts.map(p => p.mainCategory)))];
 
-  console.log(availableProducts);
-
   const filteredProducts = availableProducts.filter(product => {
     const matchesSearch = product.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
                          product.description?.toLowerCase().includes(searchTerm.toLowerCase());

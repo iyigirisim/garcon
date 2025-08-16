@@ -146,6 +146,58 @@ export const getProducts = async () => {
   return await prisma.product.findMany();
 };
 
+export const getSalesByTable = async (tableId: string) => {
+  return await prisma.sale.findMany({
+    where: { tableId },
+    include: {
+      saleItems: {
+        include: {
+          product: true,
+        },
+      },
+    },
+    orderBy: { createdAt: "desc" },
+  });
+};
+
+export const getActiveSalesByTable = async (tableId: string) => {
+  return await prisma.sale.findMany({
+    where: { 
+      tableId,
+      isPaid: false,
+    },
+    include: {
+      saleItems: {
+        include: {
+          product: true,
+        },
+      },
+    },
+    orderBy: { createdAt: "desc" },
+  });
+};
+
+export const getTableWithSales = async (tableId: string) => {
+  const table = await prisma.table.findUnique({
+    where: { id: tableId },
+  });
+  
+  if (!table) return null;
+
+  const activeSales = await getActiveSalesByTable(tableId);
+  const allSales = await getSalesByTable(tableId);
+  
+  // Calculate total amount for active sales
+  const totalAmount = activeSales.reduce((sum, sale) => sum + sale.total, 0);
+
+  return {
+    ...table,
+    sales: allSales,
+    activeSales,
+    currentTotal: totalAmount,
+  };
+};
+
 
 // export const removeItemFromSale = (
 //   saleId: string,
