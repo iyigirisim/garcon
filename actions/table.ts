@@ -1,7 +1,6 @@
 "use server";
 
 import { prisma } from "@/utils/db/prisma";
-import { Table, Sale, SaleItem, PaymentType, Product } from "../types/index";
 import dayjs from "dayjs";
 
 // const getStoredTables = (): Record<string, Table[]> => {
@@ -108,35 +107,45 @@ export const createSale = async (tableId: string) => {
 };
 
 export const addItemToSale = async (saleId: string, productId: string, quantity: number) => {
-  const product = await prisma.product.findUnique({
-    where: { id: productId },
-  });
+  return await prisma.$transaction(async (tx) => {
+    const product = await tx.product.findUnique({
+      where: { id: productId },
+    });
 
-  if (!product) throw new Error("Product not found");
+    if (!product) throw new Error("Product not found");
 
-  const unitPrice = product.price;
-  const total = unitPrice * quantity;
+    const unitPrice = product.price;
+    const total = unitPrice * quantity;
 
-  await prisma.saleItem.create({
-    data: {
-      saleId,
-      productId,
-      quantity,
-      unitPrice,
-    },
-  });
-
-  await prisma.sale.update({
-    where: { id: saleId },
-    data: {
-      total: {
-        increment: total,
+    await tx.saleItem.create({
+      data: {
+        saleId,
+        productId,
+        quantity,
+        unitPrice,
       },
-    },
-  });
+    });
 
-  return await prisma.sale.findUnique({ where: { id: saleId }, include: { saleItems: true } });
+    await tx.sale.update({
+      where: { id: saleId },
+      data: {
+        total: {
+          increment: total,
+        },
+      },
+    });
+
+    return await tx.sale.findUnique({
+      where: { id: saleId },
+      include: { saleItems: true },
+    });
+  });
 };
+
+export const getProducts = async () => {
+  return await prisma.product.findMany();
+};
+
 
 // export const removeItemFromSale = (
 //   saleId: string,

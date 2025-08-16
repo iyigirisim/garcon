@@ -1,20 +1,30 @@
 "use client";
 
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect  } from "react";
 import { Product } from "@/types";
-import { products } from "@/actions/product";
+import { getProducts } from "@/actions/table";
 
 interface ProductSelectorProps {
   onProductAdd: (product: Product, quantity: number) => void;
 }
 
 const ProductSelector: React.FC<ProductSelectorProps> = ({ onProductAdd }) => {
-  const [availableProducts] = useState<Product[]>(products);
+  const [availableProducts, setAvailableProducts] = useState<Product[]>([]);
   const [searchTerm, setSearchTerm] = useState("");
   const [selectedCategory, setSelectedCategory] = useState("all");
   const [quantities, setQuantities] = useState<{ [key: string]: number }>({});
 
+  useEffect(() => {
+    const fetchProducts = async () => {
+      const products = await getProducts();
+      setAvailableProducts(products as Product[]);
+    };
+    fetchProducts();
+  }, []);
+
   const categories = ["all", ...Array.from(new Set(availableProducts.map(p => p.mainCategory)))];
+
+  console.log(availableProducts);
 
   const filteredProducts = availableProducts.filter(product => {
     const matchesSearch = product.name.toLowerCase().includes(searchTerm.toLowerCase()) ||

@@ -148,8 +148,7 @@ All components use Tailwind CSS with a consistent design system:
 ## Integration
 
 These components integrate with:
-- `/server/table.ts` - Table and sale management functions
-- `/server/product.ts` - Product data
+- `/actions/table.ts` - Table and sale management functions
 - `/types/` - TypeScript type definitions
 - Prisma database through server functions
 

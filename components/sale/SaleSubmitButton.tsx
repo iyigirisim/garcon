@@ -1,7 +1,7 @@
 "use client";
 
 import React from "react";
-import { Sale } from "@/types";
+import { Sale, PaymentType } from "@/types";
 import { SaleFormData } from "./SaleForm";
 import { createSale, addItemToSale } from "@/actions/table";
 
@@ -42,7 +42,7 @@ const SaleSubmitButton: React.FC<SaleSubmitButtonProps> = ({
           const completeSale: Sale = {
             ...newSale,
             paidAt: newSale.paidAt || undefined,
-            paymentType: newSale.paymentType || undefined,
+            paymentType: newSale.paymentType as PaymentType || undefined,
             paidAmount: newSale.paidAmount || undefined,
             note: newSale.note || undefined,
             createdById: newSale.createdById || undefined,

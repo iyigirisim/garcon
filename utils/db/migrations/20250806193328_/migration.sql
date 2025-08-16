@@ -1,9 +1,3 @@
-/*
-  Warnings:
-
-  - You are about to drop the `Orders` table. If the table is not empty, all the data it contains will be lost.
-
-*/
 -- CreateEnum
 CREATE TYPE "public"."UserRole" AS ENUM ('ADMIN', 'STAFF', 'CUSTOMER');
 
@@ -12,9 +6,6 @@ CREATE TYPE "public"."PaymentType" AS ENUM ('CASH', 'CARD', 'FOOD_TICKET', 'OTHE
 
 -- CreateEnum
 CREATE TYPE "public"."ExpenseCategory" AS ENUM ('RENT', 'BILL', 'SUPPLY', 'SALARY', 'TAX', 'OTHER');
-
--- DropTable
-DROP TABLE "public"."Orders";
 
 -- CreateTable
 CREATE TABLE "public"."User" (
@@ -73,6 +64,10 @@ CREATE TABLE "public"."Product" (
     "id" TEXT NOT NULL,
     "name" TEXT NOT NULL,
     "price" DOUBLE PRECISION NOT NULL,
+    "description" TEXT,
+    "image" TEXT,
+    "category" TEXT[],
+    "mainCategory" TEXT NOT NULL,
     "isAvailable" BOOLEAN NOT NULL DEFAULT true,
     "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
 
