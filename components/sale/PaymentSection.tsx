@@ -15,6 +15,7 @@ interface PaymentSectionProps {
     isOnCredit?: boolean;
     note?: string;
   }) => void;
+  onBack?: () => void;
 }
 
 const PaymentSection: React.FC<PaymentSectionProps> = ({
@@ -23,7 +24,8 @@ const PaymentSection: React.FC<PaymentSectionProps> = ({
   isOnCredit,
   note,
   total,
-  onPaymentChange
+  onPaymentChange,
+  onBack
 }) => {
   const paymentOptions = [
     { value: PaymentType.CASH, label: "Cash" },
@@ -46,7 +48,20 @@ const PaymentSection: React.FC<PaymentSectionProps> = ({
 
   return (
     <div className="space-y-4">
-      <h3 className="text-lg font-semibold text-gray-800">Payment Details</h3>
+      <div className="flex items-center justify-between">
+        <h3 className="text-lg font-semibold text-gray-800">Payment Details</h3>
+        {onBack && (
+          <button
+            onClick={onBack}
+            className="flex items-center gap-2 px-3 py-2 text-gray-600 hover:text-gray-800 hover:bg-gray-100 rounded-lg transition-colors"
+          >
+            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
+            </svg>
+            Back to Items
+          </button>
+        )}
+      </div>
       
       {/* Credit Toggle */}
       <div className="flex items-center space-x-3">

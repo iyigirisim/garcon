@@ -9,6 +9,7 @@ interface SaleItemsListProps {
   onRemoveItem: (itemId: string) => void;
   total: number;
   loading?: boolean;
+  readOnly?: boolean;
 }
 
 const SaleItemsList: React.FC<SaleItemsListProps> = ({
@@ -16,7 +17,8 @@ const SaleItemsList: React.FC<SaleItemsListProps> = ({
   onUpdateItem,
   onRemoveItem,
   total,
-  loading = false
+  loading = false,
+  readOnly = false
 }) => {
   const handleQuantityChange = (itemId: string, newQuantity: number) => {
     if (newQuantity >= 1) {
@@ -26,7 +28,9 @@ const SaleItemsList: React.FC<SaleItemsListProps> = ({
 
   return (
     <div className="space-y-4">
-      <h3 className="text-lg font-semibold text-gray-800">Sale Items</h3>
+      <h3 className="text-lg font-semibold text-gray-800">
+        {readOnly ? "Order Summary" : "Sale Items"}
+      </h3>
       
       {loading ? (
         <div className="text-center py-8 border-2 border-dashed border-blue-300 rounded-lg bg-blue-50">
@@ -59,42 +63,59 @@ const SaleItemsList: React.FC<SaleItemsListProps> = ({
                 </div>
                 
                 <div className="flex items-center space-x-3">
-                  {/* Quantity Controls */}
-                  <div className="flex items-center space-x-1">
-                    <button
-                      onClick={() => handleQuantityChange(item.id, item.quantity - 1)}
-                      className="w-8 h-8 flex items-center justify-center bg-white border border-gray-300 text-gray-600 rounded hover:bg-gray-100"
-                    >
-                      -
-                    </button>
-                    <input
-                      type="number"
-                      min="1"
-                      value={item.quantity}
-                      onChange={(e) => handleQuantityChange(item.id, parseInt(e.target.value) || 1)}
-                      className="w-16 text-center border border-gray-300 rounded px-2 py-1"
-                    />
-                    <button
-                      onClick={() => handleQuantityChange(item.id, item.quantity + 1)}
-                      className="w-8 h-8 flex items-center justify-center bg-white border border-gray-300 text-gray-600 rounded hover:bg-gray-100"
-                    >
-                      +
-                    </button>
-                  </div>
-                  
-                  {/* Subtotal */}
-                  <div className="w-20 text-right font-semibold text-emerald-600">
-                    ₺{(item.unitPrice * item.quantity).toFixed(2)}
-                  </div>
-                  
-                  {/* Remove Button */}
-                  <button
-                    onClick={() => onRemoveItem(item.id)}
-                    className="w-8 h-8 flex items-center justify-center bg-red-100 text-red-600 rounded hover:bg-red-200 transition-colors"
-                    title="Remove item"
-                  >
-                    ×
-                  </button>
+                  {!readOnly ? (
+                    <>
+                      {/* Quantity Controls */}
+                      <div className="flex items-center space-x-1">
+                        <button
+                          onClick={() => handleQuantityChange(item.id, item.quantity - 1)}
+                          className="w-8 h-8 flex items-center justify-center bg-white border border-gray-300 text-gray-600 rounded hover:bg-gray-100"
+                        >
+                          -
+                        </button>
+                        <input
+                          type="number"
+                          min="1"
+                          value={item.quantity}
+                          onChange={(e) => handleQuantityChange(item.id, parseInt(e.target.value) || 1)}
+                          className="w-16 text-center border border-gray-300 rounded px-2 py-1"
+                        />
+                        <button
+                          onClick={() => handleQuantityChange(item.id, item.quantity + 1)}
+                          className="w-8 h-8 flex items-center justify-center bg-white border border-gray-300 text-gray-600 rounded hover:bg-gray-100"
+                        >
+                          +
+                        </button>
+                      </div>
+                      
+                      {/* Subtotal */}
+                      <div className="w-20 text-right font-semibold text-emerald-600">
+                        ₺{(item.unitPrice * item.quantity).toFixed(2)}
+                      </div>
+                      
+                      {/* Remove Button */}
+                      <button
+                        onClick={() => onRemoveItem(item.id)}
+                        className="w-8 h-8 flex items-center justify-center bg-red-100 text-red-600 rounded hover:bg-red-200 transition-colors"
+                        title="Remove item"
+                      >
+                        ×
+                      </button>
+                    </>
+                  ) : (
+                    <>
+                      {/* Quantity Display (Read-only) */}
+                      <div className="flex items-center space-x-2">
+                        <span className="text-gray-600">Adet:</span>
+                        <span className="font-medium">{item.quantity}</span>
+                      </div>
+                      
+                      {/* Subtotal */}
+                      <div className="w-20 text-right font-semibold text-emerald-600">
+                        ₺{(item.unitPrice * item.quantity).toFixed(2)}
+                      </div>
+                    </>
+                  )}
                 </div>
               </div>
             ))}

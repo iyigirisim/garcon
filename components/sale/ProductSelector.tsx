@@ -50,76 +50,119 @@ const ProductSelector: React.FC<ProductSelectorProps> = ({ onProductAdd }) => {
     <div className="space-y-4">
       <h3 className="text-lg font-semibold text-gray-800">Add Products</h3>
       
-      {/* Search and Filter */}
-      <div className="space-y-3">
-        <input
-          type="text"
-          placeholder="Search products..."
-          value={searchTerm}
-          onChange={(e) => setSearchTerm(e.target.value)}
-          className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-transparent"
-        />
-        
-        <select
-          value={selectedCategory}
-          onChange={(e) => setSelectedCategory(e.target.value)}
-          className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-transparent"
-        >
-          {categories.map(category => (
-            <option key={category} value={category}>
-              {category === "all" ? "All Categories" : category}
-            </option>
-          ))}
-        </select>
-      </div>
-
-      {/* Product List */}
-      <div className="max-h-96 overflow-y-auto space-y-2">
-        {filteredProducts.map(product => (
-          <div
-            key={product.id}
-            className="flex items-center justify-between p-3 border border-gray-200 rounded-lg hover:bg-gray-50"
-          >
-            <div className="flex-1">
-              <div className="font-medium text-gray-800">{product.name}</div>
-              <div className="text-sm text-gray-600">{product.description}</div>
-              <div className="text-sm font-semibold text-emerald-600">
-                ₺{product.price.toFixed(2)}
-              </div>
-            </div>
-            
-            <div className="flex items-center space-x-2">
-              <div className="flex items-center space-x-1">
-                <button
-                  onClick={() => setQuantity(product.id, getQuantity(product.id) - 1)}
-                  className="w-8 h-8 flex items-center justify-center bg-gray-200 text-gray-600 rounded hover:bg-gray-300"
-                >
-                  -
-                </button>
-                <span className="w-8 text-center font-medium">
-                  {getQuantity(product.id)}
-                </span>
-                <button
-                  onClick={() => setQuantity(product.id, getQuantity(product.id) + 1)}
-                  className="w-8 h-8 flex items-center justify-center bg-gray-200 text-gray-600 rounded hover:bg-gray-300"
-                >
-                  +
-                </button>
-              </div>
-              
+      {/* Search */}
+      <input
+        type="text"
+        placeholder="Search products..."
+        value={searchTerm}
+        onChange={(e) => setSearchTerm(e.target.value)}
+        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-transparent"
+      />
+      
+      {/* Categories Grid - Only show if no category is selected or "all" is selected */}
+      {selectedCategory === "all" && (
+        <div>
+          <h4 className="text-md font-medium text-gray-700 mb-3">Categories</h4>
+          <div className="grid grid-cols-3 gap-3 mb-6">
+            {categories.filter(cat => cat !== "all").map(category => (
               <button
-                onClick={() => handleAddProduct(product)}
-                className="px-4 py-2 bg-emerald-600 text-white rounded-lg hover:bg-emerald-700 transition-colors"
+                key={category}
+                onClick={() => setSelectedCategory(category)}
+                className="aspect-square p-4 border-2 border-gray-200 rounded-lg hover:border-emerald-500 hover:bg-emerald-50 transition-all duration-200 flex items-center justify-center text-center"
               >
-                Add
+                <span className="font-medium text-gray-800 text-sm">
+                  {category}
+                </span>
               </button>
-            </div>
+            ))}
           </div>
-        ))}
-      </div>
+        </div>
+      )}
 
-      {filteredProducts.length === 0 && (
-        <div className="text-center text-gray-500 py-4">
+      {/* Back to Categories Button - Show when a specific category is selected */}
+      {selectedCategory !== "all" && (
+        <button
+          onClick={() => setSelectedCategory("all")}
+          className="mb-4 px-4 py-2 text-emerald-600 hover:text-emerald-700 font-medium flex items-center gap-2"
+        >
+          ← Back to Categories
+        </button>
+      )}
+
+      {/* Products Grid - Only show when a specific category is selected or when searching */}
+      {(selectedCategory !== "all" || searchTerm) && (
+        <div>
+          {selectedCategory !== "all" && (
+            <h4 className="text-md font-medium text-gray-700 mb-3">
+              {selectedCategory}
+            </h4>
+          )}
+          <div className="grid grid-cols-2 gap-4 max-h-[30rem] overflow-y-auto min-h-60">
+            {filteredProducts.map(product => (
+              <div
+                key={product.id}
+                className="h-max border border-gray-200 rounded-lg p-3 hover:shadow-md transition-shadow duration-200"
+              >
+                {/* Product Image */}
+                {/* <div className="aspect-square bg-gray-100 rounded-lg mb-3 overflow-hidden">
+                  {product.image ? (
+                    <img
+                      src={product.image}
+                      alt={product.name}
+                      className="w-full h-full object-cover"
+                    />
+                  ) : (
+                    <div className="w-full h-full flex items-center justify-center text-gray-400">
+                      <span className="text-2xl">📦</span>
+                    </div>
+                  )}
+                </div> */}
+                
+                {/* Product Name and Price */}
+                <div className="mb-3">
+                  <h5 className="font-medium text-gray-800 text-sm leading-tight mb-1">
+                    {product.name}
+                  </h5>
+                  <div className="text-sm font-semibold text-emerald-600">
+                    ₺{product.price.toFixed(2)}
+                  </div>
+                </div>
+                
+                {/* Quantity Controls and Add Button */}
+                <div className="space-y-2">
+                  <div className="flex items-center justify-center space-x-2">
+                    <button
+                      onClick={() => setQuantity(product.id, getQuantity(product.id) - 1)}
+                      className="w-7 h-7 flex items-center justify-center bg-gray-200 text-gray-600 rounded hover:bg-gray-300 text-sm"
+                    >
+                      -
+                    </button>
+                    <span className="w-8 text-center font-medium text-sm">
+                      {getQuantity(product.id)}
+                    </span>
+                    <button
+                      onClick={() => setQuantity(product.id, getQuantity(product.id) + 1)}
+                      className="w-7 h-7 flex items-center justify-center bg-gray-200 text-gray-600 rounded hover:bg-gray-300 text-sm"
+                    >
+                      +
+                    </button>
+                    <button
+                      onClick={() => handleAddProduct(product)}
+                      className="w-1/2 py-2 bg-emerald-600 text-white rounded-lg hover:bg-emerald-700 transition-colors text-sm font-medium"
+                      >
+                      Add
+                    </button>
+                  </div>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {/* No products found message */}
+      {(selectedCategory !== "all" || searchTerm) && filteredProducts.length === 0 && (
+        <div className="text-center text-gray-500 py-8">
           No products found matching your criteria.
         </div>
       )}

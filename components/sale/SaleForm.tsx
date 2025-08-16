@@ -233,43 +233,64 @@ const SaleForm: React.FC<SaleFormProps> = ({ initialTables = [], onSaleComplete 
     <div className="max-w-full mx-auto p-6 space-y-6">
       <div className="bg-white rounded-lg shadow-md p-6">
         <h1 className="text-2xl font-bold text-gray-800 mb-6">
-          {saleData.saleItems.length > 0 && saleData.table ? "Edit Order" : "New Sale"}
+          {isFinalizing 
+            ? "Payment Details" 
+            : (saleData.saleItems.length > 0 && saleData.table ? "Edit Order" : "New Sale")
+          }
         </h1>
         
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-          {/* Left Column */}
-          <div className="space-y-6">
-            <TableSelector
-              selectedTable={saleData.table}
-              onTableSelect={handleTableSelect}
-              initialTables={initialTables}
-            />
-            
-            <CustomerSelector
-              customerName={saleData.customerName}
-              onCustomerSelect={(customerName) => updateSaleData({ customerName })}
-            />
-          </div>
+        {!isFinalizing ? (
+          // Sale Items View - Show product selection and order building
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+            {/* Left Column */}
+            <div className="space-y-6">
+              <TableSelector
+                selectedTable={saleData.table}
+                onTableSelect={handleTableSelect}
+                initialTables={initialTables}
+              />
+              
+              <CustomerSelector
+                customerName={saleData.customerName}
+                onCustomerSelect={(customerName) => updateSaleData({ customerName })}
+              />
+            </div>
 
-          {/* Product Selector */}
-          <div className="space-y-6">
-            <ProductSelector
-              onProductAdd={addSaleItem}
-            />
-          </div>
+            {/* Product Selector */}
+            <div className="space-y-6">
+              <ProductSelector
+                onProductAdd={addSaleItem}
+              />
+            </div>
 
-          {/* Right Column */}
-          <div className="space-y-6">
-            <SaleItemsList
-              items={saleData.saleItems}
-              onUpdateItem={updateSaleItem}
-              onRemoveItem={removeSaleItem}
-              total={calculateTotal()}
-              loading={loadingExistingSale}
-            />
+            {/* Right Column */}
+            <div className="space-y-6">
+              <SaleItemsList
+                items={saleData.saleItems}
+                onUpdateItem={updateSaleItem}
+                onRemoveItem={removeSaleItem}
+                total={calculateTotal()}
+                loading={loadingExistingSale}
+              />
+            </div>
+          </div>
+        ) : (
+          // Payment Details View - Show only payment section and order summary
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+            {/* Left Column - Order Summary */}
+            <div className="space-y-6">
+              <SaleItemsList
+                items={saleData.saleItems}
+                onUpdateItem={updateSaleItem}
+                onRemoveItem={removeSaleItem}
+                total={calculateTotal()}
+                loading={loadingExistingSale}
+                readOnly={true}
+              />
+            </div>
             
-            {/* Payment Section - Only shown when finalizing */}
-            {isFinalizing && (
+            {/* Right Column - Payment Details */}
+            <div className="space-y-6">
               <PaymentSection
                 paymentType={saleData.paymentType}
                 paidAmount={saleData.paidAmount}
@@ -277,128 +298,129 @@ const SaleForm: React.FC<SaleFormProps> = ({ initialTables = [], onSaleComplete 
                 note={saleData.note}
                 total={calculateTotal()}
                 onPaymentChange={(updates) => updateSaleData(updates)}
+                onBack={() => setIsFinalizing(false)}
               />
-            )}
-            
-            {/* Action Buttons Section */}
-            <div className="space-y-4">
-              {/* Validation Messages */}
-              {validationMessage && (
-                <div className="p-3 bg-yellow-50 border border-yellow-200 rounded-lg">
-                  <div className="text-yellow-800 text-sm font-medium">
-                    {validationMessage}
-                  </div>
-                </div>
-              )}
-
-              {/* Action Buttons */}
-              {!isFinalizing ? (
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                  <button
-                    onClick={handleSaveOrder}
-                    disabled={!canSaveOrder() || isSubmitting}
-                    className={`py-3 px-4 font-semibold rounded-lg transition-colors ${
-                      canSaveOrder() && !isSubmitting
-                        ? "bg-blue-600 hover:bg-blue-700 text-white"
-                        : "bg-gray-400 cursor-not-allowed text-white"
-                    }`}
-                  >
-                    {isSubmitting ? "Saving..." : "Save Order"}
-                  </button>
-                  
-                  <button
-                    onClick={handleFinalizeAndPay}
-                    disabled={!canSaveOrder() || isSubmitting}
-                    className={`py-3 px-4 font-semibold rounded-lg transition-colors ${
-                      canSaveOrder() && !isSubmitting
-                        ? "bg-emerald-600 hover:bg-emerald-700 text-white"
-                        : "bg-gray-400 cursor-not-allowed text-white"
-                    }`}
-                  >
-                    Finalize & Pay
-                  </button>
-                </div>
-              ) : (
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                  <button
-                    onClick={() => setIsFinalizing(false)}
-                    disabled={isSubmitting}
-                    className="py-3 px-4 font-semibold rounded-lg border-2 border-gray-300 text-gray-700 hover:bg-gray-50 transition-colors"
-                  >
-                    Back to Order
-                  </button>
-                  
-                  <button
-                    onClick={handleFinalizeAndPay}
-                    disabled={!canFinalizeOrder() || isSubmitting}
-                    className={`py-3 px-4 font-semibold rounded-lg transition-colors ${
-                      canFinalizeOrder() && !isSubmitting
-                        ? saleData.isOnCredit 
-                          ? "bg-orange-600 hover:bg-orange-700 text-white"
-                          : "bg-emerald-600 hover:bg-emerald-700 text-white"
-                        : "bg-gray-400 cursor-not-allowed text-white"
-                    }`}
-                  >
-                    {isSubmitting 
-                      ? "Processing..." 
-                      : saleData.isOnCredit 
-                        ? "Create Sale (On Credit)" 
-                        : "Complete Payment"
-                    }
-                  </button>
-                </div>
-              )}
-
-              {/* Sale Summary */}
-              {saleData.saleItems.length > 0 && (
-                <div className="p-4 bg-gray-50 rounded-lg space-y-2">
-                  <div className="text-sm font-medium text-gray-700">Sale Summary</div>
-                  <div className="space-y-1 text-sm">
-                    <div className="flex justify-between">
-                      <span>Table:</span>
-                      <span className="font-medium">{saleData.table?.name || "Not selected"}</span>
-                    </div>
-                    {saleData.customerName && (
-                      <div className="flex justify-between">
-                        <span>Customer:</span>
-                        <span className="font-medium">{saleData.customerName}</span>
-                      </div>
-                    )}
-                    <div className="flex justify-between">
-                      <span>Items:</span>
-                      <span className="font-medium">{saleData.saleItems.length}</span>
-                    </div>
-                    <div className="flex justify-between">
-                      <span>Total:</span>
-                      <span className="font-medium">
-                        ₺{calculateTotal().toFixed(2)}
-                      </span>
-                    </div>
-                    {isFinalizing && !saleData.isOnCredit && (
-                      <>
-                        <div className="flex justify-between">
-                          <span>Payment:</span>
-                          <span className="font-medium">{saleData.paymentType}</span>
-                        </div>
-                        {saleData.paidAmount && (
-                          <div className="flex justify-between">
-                            <span>Received:</span>
-                            <span className="font-medium">₺{saleData.paidAmount.toFixed(2)}</span>
-                          </div>
-                        )}
-                      </>
-                    )}
-                    {isFinalizing && saleData.isOnCredit && (
-                      <div className="flex justify-between text-orange-600">
-                        <span>Status:</span>
-                        <span className="font-medium">On Credit</span>
-                      </div>
-                    )}
-                  </div>
-                </div>
-              )}
             </div>
           </div>
+        )}
+        
+        {/* Action Buttons Section */}
+        <div className="mt-6 space-y-4">
+          {/* Validation Messages */}
+          {validationMessage && (
+            <div className="p-3 bg-yellow-50 border border-yellow-200 rounded-lg">
+              <div className="text-yellow-800 text-sm font-medium">
+                {validationMessage}
+              </div>
+            </div>
+          )}
+
+          {/* Action Buttons */}
+          {!isFinalizing ? (
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              <button
+                onClick={handleSaveOrder}
+                disabled={!canSaveOrder() || isSubmitting}
+                className={`py-3 px-4 font-semibold rounded-lg transition-colors ${
+                  canSaveOrder() && !isSubmitting
+                    ? "bg-blue-600 hover:bg-blue-700 text-white"
+                    : "bg-gray-400 cursor-not-allowed text-white"
+                }`}
+              >
+                {isSubmitting ? "Saving..." : "Save Order"}
+              </button>
+              
+              <button
+                onClick={handleFinalizeAndPay}
+                disabled={!canSaveOrder() || isSubmitting}
+                className={`py-3 px-4 font-semibold rounded-lg transition-colors ${
+                  canSaveOrder() && !isSubmitting
+                    ? "bg-emerald-600 hover:bg-emerald-700 text-white"
+                    : "bg-gray-400 cursor-not-allowed text-white"
+                }`}
+              >
+                Finalize & Pay
+              </button>
+            </div>
+          ) : (
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              <button
+                onClick={() => setIsFinalizing(false)}
+                disabled={isSubmitting}
+                className="py-3 px-4 font-semibold rounded-lg border-2 border-gray-300 text-gray-700 hover:bg-gray-50 transition-colors"
+              >
+                Back to Order
+              </button>
+              
+              <button
+                onClick={handleFinalizeAndPay}
+                disabled={!canFinalizeOrder() || isSubmitting}
+                className={`py-3 px-4 font-semibold rounded-lg transition-colors ${
+                  canFinalizeOrder() && !isSubmitting
+                    ? saleData.isOnCredit 
+                      ? "bg-orange-600 hover:bg-orange-700 text-white"
+                      : "bg-emerald-600 hover:bg-emerald-700 text-white"
+                    : "bg-gray-400 cursor-not-allowed text-white"
+                }`}
+              >
+                {isSubmitting 
+                  ? "Processing..." 
+                  : saleData.isOnCredit 
+                    ? "Create Sale (On Credit)" 
+                    : "Complete Payment"
+                }
+              </button>
+            </div>
+          )}
+
+          {/* Sale Summary */}
+          {saleData.saleItems.length > 0 && (
+            <div className="p-4 bg-gray-50 rounded-lg space-y-2">
+              <div className="text-sm font-medium text-gray-700">Sale Summary</div>
+              <div className="space-y-1 text-sm">
+                <div className="flex justify-between">
+                  <span>Table:</span>
+                  <span className="font-medium">{saleData.table?.name || "Not selected"}</span>
+                </div>
+                {saleData.customerName && (
+                  <div className="flex justify-between">
+                    <span>Customer:</span>
+                    <span className="font-medium">{saleData.customerName}</span>
+                  </div>
+                )}
+                <div className="flex justify-between">
+                  <span>Items:</span>
+                  <span className="font-medium">{saleData.saleItems.length}</span>
+                </div>
+                <div className="flex justify-between">
+                  <span>Total:</span>
+                  <span className="font-medium">
+                    ₺{calculateTotal().toFixed(2)}
+                  </span>
+                </div>
+                {isFinalizing && !saleData.isOnCredit && (
+                  <>
+                    <div className="flex justify-between">
+                      <span>Payment:</span>
+                      <span className="font-medium">{saleData.paymentType}</span>
+                    </div>
+                    {saleData.paidAmount && (
+                      <div className="flex justify-between">
+                        <span>Received:</span>
+                        <span className="font-medium">₺{saleData.paidAmount.toFixed(2)}</span>
+                      </div>
+                    )}
+                  </>
+                )}
+                {isFinalizing && saleData.isOnCredit && (
+                  <div className="flex justify-between text-orange-600">
+                    <span>Status:</span>
+                    <span className="font-medium">On Credit</span>
+                  </div>
+                )}
+              </div>
+            </div>
+          )}
         </div>
       </div>
     </div>
