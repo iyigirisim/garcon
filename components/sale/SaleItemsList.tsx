@@ -42,8 +42,9 @@ const SaleItemsList: React.FC<SaleItemsListProps> = ({
           </div>
         </div>
       ) : items.length === 0 ? (
-        <div className="text-center text-gray-500 py-8 border-2 border-dashed border-gray-300 rounded-lg">
-          No items added yet. Select products to add them to the sale.
+        <div className="text-center text-gray-500 p-8 border-2 border-dashed border-gray-300 rounded-l">
+          No items added yet. <br />
+          Select products to add them to the sale.
         </div>
       ) : (
         <>
