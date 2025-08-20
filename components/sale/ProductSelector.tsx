@@ -68,7 +68,7 @@ const ProductSelector: React.FC<ProductSelectorProps> = ({ onProductAdd }) => {
               <button
                 key={category}
                 onClick={() => setSelectedCategory(category)}
-                className="aspect-square p-4 border-2 border-gray-200 rounded-lg hover:border-emerald-500 hover:bg-emerald-50 transition-all duration-200 flex items-center justify-center text-center"
+                className="h-40 p-4 border-2 border-gray-200 rounded-lg hover:border-emerald-500 hover:bg-emerald-50 transition-all duration-200 flex items-center justify-center text-center"
               >
                 <span className="font-medium text-gray-800 text-sm">
                   {category}

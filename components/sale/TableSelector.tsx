@@ -4,6 +4,7 @@ import React, { useState, useEffect } from "react";
 import { Table } from "@/types";
 import { getAllTables, createTable } from "@/actions/table";
 import { useTableSalesCache } from "@/hooks/useTableSalesCache";
+import dayjs from "dayjs";
 
 interface TableWithSales extends Table {
   hasActiveSales?: boolean;
@@ -189,7 +190,10 @@ const TableSelector: React.FC<TableSelectorProps> = ({
                 )}
                 
                 <div className="text-xs text-gray-500">
-                  Opened: {new Date(table.openedAt).toLocaleTimeString()}
+                  Opened: {dayjs(table.openedAt).format("HH:mm")}
+                  {dayjs(table.openedAt).isSame(dayjs(), 'day') ? ", Today" : 
+                      dayjs(table.openedAt).isSame(dayjs().subtract(1, 'day'), 'day') ? 
+                        ", Yesterday" : dayjs(table.openedAt).format(", DD MMM")}
                 </div>
               </button>
             ))}
@@ -219,7 +223,7 @@ const TableSelector: React.FC<TableSelectorProps> = ({
                   <div className="text-sm text-gray-600">{table.customerName}</div>
                 )}
                 <div className="text-xs text-gray-500">
-                  Closed: {table.closedAt ? new Date(table.closedAt).toLocaleTimeString() : "N/A"}
+                  Closed: {table.closedAt ? dayjs(table.closedAt).format("HH:mm, DD MMM") : "N/A"}
                 </div>
               </button>
             ))}

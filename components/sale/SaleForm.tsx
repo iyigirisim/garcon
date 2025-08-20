@@ -15,6 +15,8 @@ import { useTableSalesCache } from "@/hooks/useTableSalesCache";
 interface SaleFormProps {
   initialTables?: Table[];
   onSaleComplete?: (sale: Sale) => void;
+  currentStep: number; // 1: Table & Customer, 2: Products, 3: Review, 4: Payment
+  onStepChange?: (step: number) => void;
 }
 
 export interface SaleFormData {
@@ -27,7 +29,7 @@ export interface SaleFormData {
   note?: string;
 }
 
-const SaleForm: React.FC<SaleFormProps> = ({ initialTables = [], onSaleComplete }) => {
+const SaleForm: React.FC<SaleFormProps> = ({ initialTables = [], onSaleComplete, currentStep, onStepChange }) => {
   const [saleData, setSaleData] = useState<SaleFormData>({
     table: null,
     saleItems: [],
@@ -36,7 +38,6 @@ const SaleForm: React.FC<SaleFormProps> = ({ initialTables = [], onSaleComplete 
   });
 
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [isFinalizing, setIsFinalizing] = useState(false);
   
   const { loading: loadingExistingSale, getTableSales, invalidateTableCache } = useTableSalesCache();
 
@@ -108,12 +109,8 @@ const SaleForm: React.FC<SaleFormProps> = ({ initialTables = [], onSaleComplete 
 
   const canFinalizeOrder = () => {
     if (!canSaveOrder()) return false;
-    if (!isFinalizing) return true;
-    
-    // If finalizing, check payment requirements
+    // If paying now, ensure payment details are valid
     if (saleData.isOnCredit) return true;
-    
-    // For immediate payment, ensure payment details are valid
     const total = calculateTotal();
     return saleData.paidAmount !== undefined && saleData.paidAmount >= total;
   };
@@ -145,7 +142,7 @@ const SaleForm: React.FC<SaleFormProps> = ({ initialTables = [], onSaleComplete 
         paymentType: PaymentType.CASH,
         isOnCredit: false,
       });
-      setIsFinalizing(false);
+      if (onStepChange) onStepChange(1);
 
     } catch (error) {
       console.error("Failed to save order:", error);
@@ -156,11 +153,6 @@ const SaleForm: React.FC<SaleFormProps> = ({ initialTables = [], onSaleComplete 
 
   const handleFinalizeAndPay = async () => {
     if (!canFinalizeOrder() || !saleData.table) return;
-
-    if (!isFinalizing) {
-      setIsFinalizing(true);
-      return;
-    }
 
     setIsSubmitting(true);
     try {
@@ -205,7 +197,7 @@ const SaleForm: React.FC<SaleFormProps> = ({ initialTables = [], onSaleComplete 
         paymentType: PaymentType.CASH,
         isOnCredit: false,
       });
-      setIsFinalizing(false);
+      if (onStepChange) onStepChange(1);
 
     } catch (error) {
       console.error("Failed to finalize sale:", error);
@@ -215,55 +207,119 @@ const SaleForm: React.FC<SaleFormProps> = ({ initialTables = [], onSaleComplete 
   };
 
   const getValidationMessage = () => {
-    if (!saleData.table) return "Please select a table";
-    if (saleData.saleItems.length === 0) return "Please add at least one item";
-    
-    if (isFinalizing && !saleData.isOnCredit) {
+    // Progressive validation based on current step
+    if (currentStep >= 1 && !saleData.table) return "Please select a table";
+    if (currentStep >= 3 && saleData.saleItems.length === 0) return "Please add at least one item";
+    if (currentStep === 4 && !saleData.isOnCredit) {
       const total = calculateTotal();
       if (!saleData.paidAmount) return "Please enter the amount received";
       if (saleData.paidAmount < total) return "Paid amount is less than total";
     }
-    
     return null;
   };
 
   const validationMessage = getValidationMessage();
 
+  const canProceedToNext = () => {
+    if (currentStep === 1) {
+      return Boolean(saleData.table);
+    }
+    if (currentStep === 2) {
+      return saleData.saleItems.length > 0;
+    }
+    if (currentStep === 3) {
+      return saleData.saleItems.length > 0;
+    }
+    return false;
+  };
+
+  const goToPreviousStep = () => {
+    if (!onStepChange) return;
+    onStepChange(Math.max(1, currentStep - 1));
+  };
+
+  const goToNextStep = () => {
+    if (!onStepChange) return;
+    if (!canProceedToNext()) return;
+    onStepChange(Math.min(4, currentStep + 1));
+  };
+
   return (
-    <div className="max-w-full mx-auto p-6 space-y-6">
-      <div className="bg-white rounded-lg shadow-md p-6">
-        <h1 className="text-2xl font-bold text-gray-800 mb-6">
-          {isFinalizing 
-            ? "Payment Details" 
-            : (saleData.saleItems.length > 0 && saleData.table ? "Edit Order" : "New Sale")
-          }
+    <div className="max-w-full mx-auto p-6 space-y-6 h-full">
+      <div className="bg-white rounded-lg shadow-md p-6 h-full flex flex-col gap-6">
+        <div className="flex items-center justify-between">
+        <h1 className="text-2xl font-bold text-gray-800">
+          {currentStep === 4
+            ? "Payment Details"
+            : currentStep === 3
+              ? "Review Order"
+              : currentStep === 2
+                ? "Add Products"
+                : "New Sale"}
         </h1>
-        
-        {!isFinalizing ? (
-          // Sale Items View - Show product selection and order building
-          <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-            {/* Left Column */}
+
+            {/* Step Navigation */}
+            <div className="flex items-center justify-between pt-2">
+              <button
+                onClick={goToPreviousStep}
+                disabled={currentStep === 1}
+                className={`px-4 py-2 rounded-lg font-semibold transition-colors ${
+                  currentStep === 1
+                    ? "bg-gray-300 text-white cursor-not-allowed"
+                    : "bg-gray-200 hover:bg-gray-300 text-gray-800"
+                }`}
+              >
+                Previous
+              </button>
+              {currentStep < 4 && (
+                <button
+                  onClick={goToNextStep}
+                  disabled={!canProceedToNext()}
+                  className={`px-4 py-2 rounded-lg font-semibold transition-colors ${
+                    canProceedToNext()
+                      ? "bg-emerald-600 hover:bg-emerald-700 text-white"
+                      : "bg-gray-400 text-white cursor-not-allowed"
+                  }`}
+                >
+                  Next
+                </button>
+              )}
+            </div>
+        </div>
+        {validationMessage && (
+            <div className="p-3 bg-yellow-50 border border-yellow-200 rounded-lg">
+              <div className="text-yellow-800 text-sm font-medium">
+                {validationMessage}
+              </div>
+            </div>
+          )}
+
+        {currentStep === 1 && (
+          <div className="flex flex-col gap-6">
             <div className="space-y-6">
               <TableSelector
                 selectedTable={saleData.table}
                 onTableSelect={handleTableSelect}
                 initialTables={initialTables}
               />
-              
               <CustomerSelector
                 customerName={saleData.customerName}
                 onCustomerSelect={(customerName) => updateSaleData({ customerName })}
               />
             </div>
+          </div>
+        )}
 
-            {/* Product Selector */}
+        {currentStep === 2 && (
+          <div className="grid grid-cols-1 gap-6">
             <div className="space-y-6">
-              <ProductSelector
-                onProductAdd={addSaleItem}
-              />
+              <ProductSelector onProductAdd={addSaleItem} />
             </div>
+          </div>
+        )}
 
-            {/* Right Column */}
+        {currentStep === 3 && (
+          <div className="grid grid-cols-1 gap-6">
             <div className="space-y-6">
               <SaleItemsList
                 items={saleData.saleItems}
@@ -274,10 +330,10 @@ const SaleForm: React.FC<SaleFormProps> = ({ initialTables = [], onSaleComplete 
               />
             </div>
           </div>
-        ) : (
-          // Payment Details View - Show only payment section and order summary
+        )}
+
+        {currentStep === 4 && (
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-            {/* Left Column - Order Summary */}
             <div className="space-y-6">
               <SaleItemsList
                 items={saleData.saleItems}
@@ -288,8 +344,6 @@ const SaleForm: React.FC<SaleFormProps> = ({ initialTables = [], onSaleComplete 
                 readOnly={true}
               />
             </div>
-            
-            {/* Right Column - Payment Details */}
             <div className="space-y-6">
               <PaymentSection
                 paymentType={saleData.paymentType}
@@ -298,25 +352,14 @@ const SaleForm: React.FC<SaleFormProps> = ({ initialTables = [], onSaleComplete 
                 note={saleData.note}
                 total={calculateTotal()}
                 onPaymentChange={(updates) => updateSaleData(updates)}
-                onBack={() => setIsFinalizing(false)}
+                onBack={onStepChange ? () => onStepChange(3) : undefined}
               />
             </div>
           </div>
         )}
-        
-        {/* Action Buttons Section */}
-        <div className="mt-6 space-y-4">
-          {/* Validation Messages */}
-          {validationMessage && (
-            <div className="p-3 bg-yellow-50 border border-yellow-200 rounded-lg">
-              <div className="text-yellow-800 text-sm font-medium">
-                {validationMessage}
-              </div>
-            </div>
-          )}
 
-          {/* Action Buttons */}
-          {!isFinalizing ? (
+        <div className="space-y-4">
+          {currentStep === 4 && (
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
               <button
                 onClick={handleSaveOrder}
@@ -329,51 +372,26 @@ const SaleForm: React.FC<SaleFormProps> = ({ initialTables = [], onSaleComplete 
               >
                 {isSubmitting ? "Saving..." : "Save Order"}
               </button>
-              
-              <button
-                onClick={handleFinalizeAndPay}
-                disabled={!canSaveOrder() || isSubmitting}
-                className={`py-3 px-4 font-semibold rounded-lg transition-colors ${
-                  canSaveOrder() && !isSubmitting
-                    ? "bg-emerald-600 hover:bg-emerald-700 text-white"
-                    : "bg-gray-400 cursor-not-allowed text-white"
-                }`}
-              >
-                Finalize & Pay
-              </button>
-            </div>
-          ) : (
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-              <button
-                onClick={() => setIsFinalizing(false)}
-                disabled={isSubmitting}
-                className="py-3 px-4 font-semibold rounded-lg border-2 border-gray-300 text-gray-700 hover:bg-gray-50 transition-colors"
-              >
-                Back to Order
-              </button>
-              
               <button
                 onClick={handleFinalizeAndPay}
                 disabled={!canFinalizeOrder() || isSubmitting}
                 className={`py-3 px-4 font-semibold rounded-lg transition-colors ${
                   canFinalizeOrder() && !isSubmitting
-                    ? saleData.isOnCredit 
+                    ? saleData.isOnCredit
                       ? "bg-orange-600 hover:bg-orange-700 text-white"
                       : "bg-emerald-600 hover:bg-emerald-700 text-white"
                     : "bg-gray-400 cursor-not-allowed text-white"
                 }`}
               >
-                {isSubmitting 
-                  ? "Processing..." 
-                  : saleData.isOnCredit 
-                    ? "Create Sale (On Credit)" 
-                    : "Complete Payment"
-                }
+                {isSubmitting
+                  ? "Processing..."
+                  : saleData.isOnCredit
+                    ? "Create Sale (On Credit)"
+                    : "Complete Payment"}
               </button>
             </div>
           )}
 
-          {/* Sale Summary */}
           {saleData.saleItems.length > 0 && (
             <div className="p-4 bg-gray-50 rounded-lg space-y-2">
               <div className="text-sm font-medium text-gray-700">Sale Summary</div>
@@ -394,11 +412,9 @@ const SaleForm: React.FC<SaleFormProps> = ({ initialTables = [], onSaleComplete 
                 </div>
                 <div className="flex justify-between">
                   <span>Total:</span>
-                  <span className="font-medium">
-                    ₺{calculateTotal().toFixed(2)}
-                  </span>
+                  <span className="font-medium">₺{calculateTotal().toFixed(2)}</span>
                 </div>
-                {isFinalizing && !saleData.isOnCredit && (
+                {currentStep === 4 && !saleData.isOnCredit && (
                   <>
                     <div className="flex justify-between">
                       <span>Payment:</span>
@@ -412,7 +428,7 @@ const SaleForm: React.FC<SaleFormProps> = ({ initialTables = [], onSaleComplete 
                     )}
                   </>
                 )}
-                {isFinalizing && saleData.isOnCredit && (
+                {currentStep === 4 && saleData.isOnCredit && (
                   <div className="flex justify-between text-orange-600">
                     <span>Status:</span>
                     <span className="font-medium">On Credit</span>
