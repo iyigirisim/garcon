@@ -172,13 +172,10 @@ const SaleForm: React.FC<SaleFormProps> = ({ initialTables = [], onSaleComplete,
         // Convert to complete Sale type with required properties
         const completeSale: Sale = {
           ...newSale,
-          paidAt: newSale.paidAt || undefined,
-          closedAt: newSale.closedAt || undefined,
-          paymentType: newSale.paymentType as PaymentType || saleData.paymentType,
+          paymentType: (newSale.paymentType as PaymentType) || saleData.paymentType,
           paidAmount: newSale.paidAmount || saleData.paidAmount,
           note: newSale.note || saleData.note,
-          createdById: newSale.createdById || undefined,
-          saleItems: [],
+          saleItems: [], // These are overridden anyway
           customers: [],
         };
         onSaleComplete(completeSale);

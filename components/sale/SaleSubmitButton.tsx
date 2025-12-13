@@ -41,11 +41,7 @@ const SaleSubmitButton: React.FC<SaleSubmitButtonProps> = ({
           // Convert to complete Sale type with required properties
           const completeSale: Sale = {
             ...newSale,
-            paidAt: newSale.paidAt || undefined,
-            paymentType: newSale.paymentType as PaymentType || undefined,
-            paidAmount: newSale.paidAmount || undefined,
-            note: newSale.note || undefined,
-            createdById: newSale.createdById || undefined,
+            paymentType: (newSale.paymentType as PaymentType) || undefined,
             saleItems: [],
             customers: [],
           };
