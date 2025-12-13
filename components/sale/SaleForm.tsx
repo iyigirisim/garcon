@@ -173,6 +173,7 @@ const SaleForm: React.FC<SaleFormProps> = ({ initialTables = [], onSaleComplete,
         const completeSale: Sale = {
           ...newSale,
           paidAt: newSale.paidAt || undefined,
+          closedAt: newSale.closedAt || undefined,
           paymentType: newSale.paymentType as PaymentType || saleData.paymentType,
           paidAmount: newSale.paidAmount || saleData.paidAmount,
           note: newSale.note || saleData.note,
