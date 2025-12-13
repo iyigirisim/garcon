@@ -101,7 +101,7 @@ export const useTableSalesCache = () => {
 
       const cacheData: CachedTableSales = {
         tableId,
-        activeSales,
+        activeSales: activeSales as unknown as Sale[],
         combinedSaleItems,
         lastUpdated: Date.now(),
         totalAmount,

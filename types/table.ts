@@ -3,11 +3,11 @@ export type Table = {
   name: string;
   isOpen: boolean;
   openedAt: Date;
-  closedAt?: Date;
-  customerName?: string;
-  roomId?: string;
-  gridX?: number;
-  gridY?: number;
+  closedAt?: Date | null;
+  customerName?: string | null;
+  roomId?: string | null;
+  gridX?: number | null;
+  gridY?: number | null;
   isTakeAway: boolean;
-  deletedAt?: Date;
+  deletedAt?: Date | null;
 };

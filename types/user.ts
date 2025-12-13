@@ -6,9 +6,9 @@ export enum UserRole {
 
 export type User = {
   id: string;
-  email?: string;
+  email?: string | null;
   name: string;
   role: UserRole;
-  phone?: string;
+  phone?: string | null;
   createdAt: Date;
 };

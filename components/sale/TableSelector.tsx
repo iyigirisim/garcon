@@ -43,8 +43,6 @@ const TableSelector: React.FC<TableSelectorProps> = ({
       for (const table of allTables) {
         const convertedTable: TableWithSales = {
           ...table,
-          closedAt: table.closedAt || undefined,
-          customerName: table.customerName || undefined,
         };
 
         if (table.isOpen) {
@@ -100,8 +98,6 @@ const TableSelector: React.FC<TableSelectorProps> = ({
         const createdTable = await createTable(newTableName, newCustomerName || undefined, undefined, undefined, undefined, false);
         const newTable = {
           ...createdTable,
-          closedAt: createdTable.closedAt || undefined,
-          customerName: createdTable.customerName || undefined,
         };
         setTables(prev => [newTable, ...prev]);
         onTableSelect(newTable, false);

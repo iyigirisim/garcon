@@ -296,12 +296,12 @@ export const updateTable = async (
   tableId: string,
   data: {
     name?: string;
-    roomId?: string;
-    gridX?: number;
-    gridY?: number;
-    customerName?: string;
+    roomId?: string | null;
+    gridX?: number | null;
+    gridY?: number | null;
+    customerName?: string | null;
     isOpen?: boolean;
-    closedAt?: Date;
+    closedAt?: Date | null;
   }
 ) => {
   return await prisma.table.update({
