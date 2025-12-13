@@ -51,13 +51,24 @@ import dayjs from "dayjs";
 //   return tables[tableIndex];
 // };
 
-export const createTable = async (name: string, customerName?: string) => {
+export const createTable = async (
+  name: string,
+  customerName?: string,
+  roomId?: string,
+  gridX?: number,
+  gridY?: number,
+  isTakeAway?: boolean
+) => {
   return await prisma.table.create({
     data: {
       name,
       openedAt: dayjs().toDate(),
       isOpen: true,
       customerName,
+      roomId,
+      gridX,
+      gridY,
+      isTakeAway: isTakeAway || false,
     },
   });
 };
@@ -68,29 +79,92 @@ export const getTable = async (tableId: string) => {
   });
 };
 
+// Helper function to initialize tables for a new day
+export const initializeTablesForNewDay = async () => {
+  const today = dayjs().startOf("day").toDate();
+  const tomorrow = dayjs().add(1, "day").startOf("day").toDate();
+  
+  // Check if today's report exists
+  const todayReport = await prisma.dailyReport.findFirst({
+    where: {
+      date: {
+        gte: today,
+        lt: tomorrow,
+      },
+    },
+  });
+
+  // If no report for today exists, it's a new day - open all tables that were closed before today
+  if (!todayReport) {
+    // Get all tables that were closed before today (yesterday or earlier)
+    const tablesToOpen = await prisma.table.findMany({
+      where: {
+        OR: [
+          { isOpen: false, closedAt: { lt: today } },
+          { isOpen: false, closedAt: null },
+        ],
+        deletedAt: null,
+      },
+    });
+
+    // Open all tables that were closed before today
+    if (tablesToOpen.length > 0) {
+      await prisma.table.updateMany({
+        where: {
+          id: { in: tablesToOpen.map((t) => t.id) },
+        },
+        data: {
+          isOpen: true,
+          openedAt: dayjs().toDate(),
+          closedAt: null,
+        },
+      });
+    }
+  }
+};
+
 export const getAllTables = async () => {
+  // Initialize tables for new day if needed
+  await initializeTablesForNewDay();
+  
   return await prisma.table.findMany({
+    where: {
+      deletedAt: null,
+    },
     orderBy: { openedAt: "desc" },
   });
 };
 
 export const getActiveTables = async () => {
+  // Initialize tables for new day if needed
+  await initializeTablesForNewDay();
+  
   return await prisma.table.findMany({
-    where: { isOpen: true },
+    where: { 
+      isOpen: true,
+      deletedAt: null,
+    },
     orderBy: { openedAt: "desc" },
   });
 };
 
 export const getClosedTables = async () => {
   return await prisma.table.findMany({
-    where: { isOpen: false },
+    where: { 
+      isOpen: false,
+      deletedAt: null,
+    },
     orderBy: { openedAt: "desc" },
   });
 };
 
 export const deleteTable = async (tableId: string) => {
-  return await prisma.table.delete({
+  // Soft delete - set deletedAt instead of actually deleting
+  return await prisma.table.update({
     where: { id: tableId },
+    data: {
+      deletedAt: dayjs().toDate(),
+    },
   });
 };
 
@@ -101,6 +175,7 @@ export const createSale = async (tableId: string) => {
       total: 0,
       isPaid: false,
       isOnCredit: false,
+      openedAt: dayjs().toDate(),
       createdAt: dayjs().toDate(),
     },
   });
@@ -165,6 +240,9 @@ export const getActiveSalesByTable = async (tableId: string) => {
     where: { 
       tableId,
       isPaid: false,
+      table: {
+        deletedAt: null,
+      },
     },
     include: {
       saleItems: {
@@ -196,6 +274,61 @@ export const getTableWithSales = async (tableId: string) => {
     activeSales,
     currentTotal: totalAmount,
   };
+};
+
+export const updateTablePosition = async (
+  tableId: string,
+  gridX: number,
+  gridY: number,
+  roomId?: string
+) => {
+  return await prisma.table.update({
+    where: { id: tableId },
+    data: {
+      gridX,
+      gridY,
+      ...(roomId && { roomId }),
+    },
+  });
+};
+
+export const updateTable = async (
+  tableId: string,
+  data: {
+    name?: string;
+    roomId?: string;
+    gridX?: number;
+    gridY?: number;
+    customerName?: string;
+    isOpen?: boolean;
+    closedAt?: Date;
+  }
+) => {
+  return await prisma.table.update({
+    where: { id: tableId },
+    data,
+  });
+};
+
+export const closeTable = async (tableId: string) => {
+  return await prisma.table.update({
+    where: { id: tableId },
+    data: {
+      isOpen: false,
+      closedAt: dayjs().toDate(),
+    },
+  });
+};
+
+export const reopenTable = async (tableId: string) => {
+  return await prisma.table.update({
+    where: { id: tableId },
+    data: {
+      isOpen: true,
+      closedAt: null,
+      openedAt: dayjs().toDate(),
+    },
+  });
 };
 
 

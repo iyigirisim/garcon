@@ -1,0 +1,34 @@
+-- AlterTable
+ALTER TABLE "public"."Table" ADD COLUMN     "gridX" INTEGER,
+ADD COLUMN     "gridY" INTEGER,
+ADD COLUMN     "isTakeAway" BOOLEAN NOT NULL DEFAULT false,
+ADD COLUMN     "roomId" TEXT;
+
+-- CreateTable
+CREATE TABLE "public"."Room" (
+    "id" TEXT NOT NULL,
+    "name" TEXT NOT NULL,
+    "color" TEXT NOT NULL DEFAULT '#10b981',
+    "order" INTEGER NOT NULL DEFAULT 0,
+    "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+
+    CONSTRAINT "Room_pkey" PRIMARY KEY ("id")
+);
+
+-- CreateTable
+CREATE TABLE "public"."DailyReport" (
+    "id" TEXT NOT NULL,
+    "date" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    "totalCash" DOUBLE PRECISION NOT NULL DEFAULT 0,
+    "totalCard" DOUBLE PRECISION NOT NULL DEFAULT 0,
+    "totalFoodTicket" DOUBLE PRECISION NOT NULL DEFAULT 0,
+    "totalOther" DOUBLE PRECISION NOT NULL DEFAULT 0,
+    "totalSales" DOUBLE PRECISION NOT NULL DEFAULT 0,
+    "salesCount" INTEGER NOT NULL DEFAULT 0,
+    "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+
+    CONSTRAINT "DailyReport_pkey" PRIMARY KEY ("id")
+);
+
+-- AddForeignKey
+ALTER TABLE "public"."Table" ADD CONSTRAINT "Table_roomId_fkey" FOREIGN KEY ("roomId") REFERENCES "public"."Room"("id") ON DELETE SET NULL ON UPDATE CASCADE;

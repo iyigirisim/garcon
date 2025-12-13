@@ -28,6 +28,8 @@ export type Sale = {
   paidAmount?: number;
   isOnCredit: boolean;
   note?: string;
+  openedAt: Date;
+  closedAt?: Date;
   createdById?: string;
   createdBy?: User;
   customers: CustomerOnSale[];

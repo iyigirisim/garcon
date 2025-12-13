@@ -1,0 +1,3 @@
+-- AlterTable
+ALTER TABLE "public"."Sale" ADD COLUMN     "closedAt" TIMESTAMP(3),
+ADD COLUMN     "openedAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP;

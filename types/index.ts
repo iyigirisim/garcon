@@ -8,6 +8,12 @@ export type { Product } from "./product";
 // Table types
 export type { Table } from "./table";
 
+// Room types
+export type { Room } from "./room";
+
+// Daily Report types
+export type { DailyReport } from "./daily-report";
+
 // Sale types
 export type { Sale, SaleItem, CustomerOnSale } from "./sale";
 export { PaymentType } from "./sale";

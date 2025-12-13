@@ -22,6 +22,18 @@ model User {
   creditSales   CustomerOnSale[]
 }
 
+model Room {
+  id            String           @id @default(cuid())
+  name          String
+  color         String           @default("#10b981")
+  order         Int              @default(0)
+  gridWidth     Int              @default(3)
+  gridHeight    Int              @default(3)
+  createdAt     DateTime         @default(now())
+
+  tables        Table[]
+}
+
 model Table {
   id            String           @id @default(cuid())
   name          String           // Örn: "Masa 1"
@@ -29,8 +41,27 @@ model Table {
   openedAt      DateTime         @default(now())
   closedAt      DateTime?
   customerName  String?          // Veresiye müşterisi için opsiyonel
+  
+  roomId        String?
+  room          Room?            @relation(fields: [roomId], references: [id])
+  gridX         Int?             // Grid position X coordinate
+  gridY         Int?             // Grid position Y coordinate
+  isTakeAway    Boolean          @default(false)
+  deletedAt     DateTime?        // Soft delete timestamp
 
   sales         Sale[]
+}
+
+model DailyReport {
+  id            String           @id @default(cuid())
+  date          DateTime         @default(now())
+  totalCash     Float            @default(0)
+  totalCard     Float            @default(0)
+  totalFoodTicket Float          @default(0)
+  totalOther    Float            @default(0)
+  totalSales    Float            @default(0)
+  salesCount    Int              @default(0)
+  createdAt     DateTime         @default(now())
 }
 
 model Sale {
@@ -48,6 +79,9 @@ model Sale {
 
   isOnCredit    Boolean          @default(false)
   note          String?
+
+  openedAt      DateTime         @default(now())
+  closedAt      DateTime?
 
   createdById   String?
   createdBy     User?            @relation("CreatedSales", fields: [createdById], references: [id])

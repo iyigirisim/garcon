@@ -1,11 +1,12 @@
 "use client"
 import Link from "next/link"
 import { cn } from "@/lib/utils"
-import { Home, ShoppingCart, Users, Receipt, BarChart3, Settings, Table2 } from "lucide-react"
+import { Home, ShoppingCart, Users, Receipt, BarChart3, Settings, Table2, LayoutGrid } from "lucide-react"
 import { Button } from "@/components/ui/button"
 
 const items = [
   { href: "/", icon: Home, label: "Home" },
+  { href: "/tables", icon: LayoutGrid, label: "Tables" },
   { href: "/sales", icon: ShoppingCart, label: "Sales" },
   { href: "/products", icon: BarChart3, label: "Products" },
   { href: "/customers", icon: Users, label: "Customers" },

@@ -97,7 +97,7 @@ const TableSelector: React.FC<TableSelectorProps> = ({
 
     setIsLoading(true);
           try {
-        const createdTable = await createTable(newTableName, newCustomerName || undefined);
+        const createdTable = await createTable(newTableName, newCustomerName || undefined, undefined, undefined, undefined, false);
         const newTable = {
           ...createdTable,
           closedAt: createdTable.closedAt || undefined,
