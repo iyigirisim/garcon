@@ -25,9 +25,9 @@ const MultiRoomLayout: React.FC<MultiRoomLayoutProps> = ({
   tablesWithActiveSales = new Set(),
 }) => {
   return (
-    <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
+    <div className="flex flex-col lg:flex-row gap-6">
       {/* Take Away Section - Left Side */}
-      <div className="lg:col-span-3">
+      <div className="w-full lg:w-1/3">
         <TakeAwaySection
           tables={tables}
           selectedTable={selectedTable}
@@ -37,7 +37,7 @@ const MultiRoomLayout: React.FC<MultiRoomLayoutProps> = ({
       </div>
 
       {/* Rooms Grid Area - Right Side */}
-      <div className="lg:col-span-9">
+      <div className="w-full lg:flex-1">
         {rooms.length === 0 ? (
           <div className="text-center text-gray-400 py-12">
             <p className="text-lg">Mevcut oda yok</p>

@@ -36,7 +36,7 @@ const TakeAwaySection: React.FC<TakeAwaySectionProps> = ({
   };
 
   return (
-    <div className="space-y-3">
+    <div className="space-y-3 max-w-60">
       <div className="flex items-center justify-between">
         <h3 className="text-lg font-semibold text-gray-800">Paket Servis</h3>
         <div className="flex items-center gap-1">
@@ -45,7 +45,7 @@ const TakeAwaySection: React.FC<TakeAwaySectionProps> = ({
         </div>
       </div>
 
-      <div className="bg-gray-50 p-4 rounded-lg border-2 border-gray-300 min-h-[200px]">
+      <div className="bg-gray-50 p-4 rounded-lg border-2 border-gray-300">
         {takeAwayTables.length === 0 ? (
           <div className="text-center text-gray-400 py-8">
             <div className="text-2xl mb-2">📦</div>

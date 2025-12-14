@@ -12,6 +12,8 @@ import EndOfDayModal from "@/components/tables/EndOfDayModal";
 import { getAllRooms, createRoom, updateRoom, deleteRoom, optimizeRoomGrid } from "@/actions/room";
 import { getAllTables, createTable, updateTable, deleteTable, getActiveSalesByTable, reopenTable } from "@/actions/table";
 
+import { Plus, Settings } from "lucide-react";
+
 export default function TablesPage() {
   const [rooms, setRooms] = useState<Room[]>([]);
   const [tables, setTables] = useState<Table[]>([]);
@@ -23,12 +25,17 @@ export default function TablesPage() {
   const [hasActiveSales, setHasActiveSales] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
   const [tablesWithActiveSales, setTablesWithActiveSales] = useState<Set<string>>(new Set());
+  const [isMobilePanelOpen, setIsMobilePanelOpen] = useState(false);
 
   useEffect(() => {
     loadData();
   }, []);
 
   useEffect(() => {
+    if (selectedTable) {
+        setIsMobilePanelOpen(true);
+    } 
+    
     if (selectedTable && selectedTable.isOpen) {
       checkActiveSales();
     } else {
@@ -242,23 +249,35 @@ export default function TablesPage() {
   }
 
   return (
-    <div className="min-h-screen bg-transparent">
-      <div className="container mx-auto p-6">
-        <div className="mb-6">
-          <h1 className="text-3xl font-bold text-gray-800">Masa Yönetimi</h1>
-          <p className="text-gray-600">Restoran yerleşim planınızı ve siparişlerinizi yönetin</p>
+    <div className="h-full flex flex-col bg-transparent">
+      <div className="flex-none container mx-auto p-6 pb-0">
+        <div className="mb-6 flex justify-between items-start">
+          <div>
+            <h1 className="text-3xl font-bold text-gray-800">Masa Yönetimi</h1>
+            <p className="text-gray-600">Restoran yerleşim planınızı ve siparişlerinizi yönetin</p>
+          </div>
+          <button
+            onClick={() => setIsMobilePanelOpen(true)}
+            className="lg:hidden p-2 text-gray-600 hover:bg-gray-100 rounded-full"
+          >
+            <Settings className="w-6 h-6" />
+          </button>
         </div>
+      </div>
 
-        <div className="flex flex-wrap gap-6">
-          {/* Left Column - Floor Plan (70%) */}
-          <div className="w-2/3 space-y-4">
+      <div className="flex-1 flex flex-col lg:flex-row min-h-0 container mx-auto px-6 pb-6 gap-6 overflow-y-auto lg:overflow-hidden">
+        {/* Left Column - Floor Plan (70%) */}
+        <div className="w-full lg:w-2/3 flex flex-col lg:h-full">
+          <div className="sticky top-0 z-10 backdrop-blur-sm pt-2 pb-4 -mx-2 px-2 lg:static lg:bg-transparent lg:p-0 lg:mb-4 lg:mx-0">
             <RoomSelector
               rooms={rooms}
               onRoomCreate={handleRoomCreate}
               onRoomUpdate={handleRoomUpdate}
               onRoomDelete={handleRoomDelete}
             />
+          </div>
 
+          <div className="lg:flex-1 lg:overflow-y-auto min-h-0 lg:pr-2">
             <MultiRoomLayout
               rooms={rooms}
               tables={tables}
@@ -268,12 +287,11 @@ export default function TablesPage() {
               onRoomGridUpdate={handleRoomGridUpdate}
               tablesWithActiveSales={tablesWithActiveSales}
             />
-
-
           </div>
+        </div>
 
-          {/* Right Column - Management Panel (30%) */}
-          <div className="lg:col-span-1">
+        {/* Right Column - Management Panel (Desktop) */}
+        <div className="hidden lg:block w-full lg:flex-1 lg:h-full lg:overflow-y-auto lg:pl-2">
             <ManagementPanel
               selectedTable={selectedTable}
               onAddOrder={() => setIsAddingOrder(true)}
@@ -285,10 +303,46 @@ export default function TablesPage() {
               onDeselect={() => setSelectedTable(null)}
               onReopenTable={handleTableReopen}
             />
+        </div>
+
+        {/* Mobile Management Panel Modal (Bottom Sheet) */}
+        <div 
+          className={`lg:hidden fixed inset-0 z-50 bg-black/50 transition-opacity duration-300 ${
+            isMobilePanelOpen ? "opacity-100" : "opacity-0 pointer-events-none"
+          }`}
+          onClick={() => {
+            setIsMobilePanelOpen(false);
+            setSelectedTable(null);
+          }}
+        >
+          <div 
+            className={`absolute bottom-0 left-0 right-0 bg-white rounded-t-2xl max-h-[85vh] overflow-y-auto shadow-xl transform transition-transform duration-300 ${
+              isMobilePanelOpen ? "translate-y-0" : "translate-y-full"
+            }`}
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="p-2 flex justify-center sticky top-0 bg-white z-10 border-b border-gray-100/0">
+              <div className="w-12 h-1.5 bg-gray-300 rounded-full my-2" />
+            </div>
+            <div className="px-4 pb-8">
+              <ManagementPanel
+                selectedTable={selectedTable}
+                onAddOrder={() => setIsAddingOrder(true)}
+                onPayment={() => setIsProcessingPayment(true)}
+                onEndOfDay={() => setIsEndOfDay(true)}
+                onDelete={handleTableDelete}
+                onEdit={() => setIsEditingTable(true)}
+                hasActiveSales={hasActiveSales}
+                onDeselect={() => {
+                  setSelectedTable(null);
+                  setIsMobilePanelOpen(false);
+                }}
+                onReopenTable={handleTableReopen}
+              />
+            </div>
           </div>
         </div>
       </div>
-
       {/* Modals */}
       {isEditingTable && (
         <TableEditor
