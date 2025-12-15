@@ -19,6 +19,7 @@ import {
   DialogFooter,
 } from "@/components/ui/dialog";
 import { useProductsCache } from "@/hooks/useDataCache";
+import { createProduct, updateProduct, deleteProduct } from "@/actions/product";
 
 interface ProductFormData {
   name: string;
@@ -88,26 +89,40 @@ export default function ProductsPage() {
     setSubmitting(true);
 
     try {
-      const url = editingProduct ? `/api/products/${editingProduct.id}` : "/api/products";
-      const method = editingProduct ? "PUT" : "POST";
+      let result;
+      
+      if (editingProduct) {
+        // Only include fields that have changed or are relevant
+        result = await updateProduct(editingProduct.id, {
+          name: formData.name,
+          price: formData.price,
+          description: formData.description,
+          mainCategory: formData.mainCategory,
+          category: formData.category,
+          isAvailable: formData.isAvailable
+        });
+      } else {
+        result = await createProduct({
+          name: formData.name,
+          price: formData.price,
+          description: formData.description,
+          mainCategory: formData.mainCategory,
+          category: formData.category,
+          isAvailable: formData.isAvailable
+        });
+      }
 
-      const response = await fetch(url, {
-        method,
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify(formData),
-      });
-
-      if (response.ok) {
+      if (result.success) {
         invalidateProducts(); // Clear cache
         await refreshProducts(); // Refresh from server
         resetForm();
       } else {
-        console.error("Error saving product");
+        console.error("Error saving product:", result.error);
+        alert(`Error saving product: ${result.error}`);
       }
     } catch (error) {
       console.error("Error saving product:", error);
+      alert("An unexpected error occurred while saving the product.");
     } finally {
       setSubmitting(false);
     }
@@ -130,18 +145,18 @@ export default function ProductsPage() {
     if (!confirm("Are you sure you want to delete this product?")) return;
 
     try {
-      const response = await fetch(`/api/products/${productId}`, {
-        method: "DELETE",
-      });
+      const result = await deleteProduct(productId);
 
-      if (response.ok) {
+      if (result.success) {
         invalidateProducts(); // Clear cache
         await refreshProducts(); // Refresh from server
       } else {
-        console.error("Error deleting product");
+        console.error("Error deleting product:", result.error);
+        alert(`Error deleting product: ${result.error}`);
       }
     } catch (error) {
       console.error("Error deleting product:", error);
+      alert("An unexpected error occurred while deleting the product.");
     }
   };
 
