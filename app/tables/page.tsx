@@ -283,6 +283,7 @@ export default function TablesPage() {
               tables={tables}
               selectedTable={selectedTable}
               onTableSelect={handleTableSelect}
+              onTableDelete={handleTableDelete}
               onCellClick={handleCellClick}
               onRoomGridUpdate={handleRoomGridUpdate}
               tablesWithActiveSales={tablesWithActiveSales}

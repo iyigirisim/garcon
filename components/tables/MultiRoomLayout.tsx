@@ -10,6 +10,7 @@ interface MultiRoomLayoutProps {
   tables: Table[];
   selectedTable: Table | null;
   onTableSelect: (table: Table) => void;
+  onTableDelete: (tableId: string) => void;
   onCellClick: (roomId: string, x: number, y: number) => void;
   onRoomGridUpdate?: (roomId: string, gridWidth: number, gridHeight: number) => void;
   tablesWithActiveSales?: Set<string>;
@@ -20,6 +21,7 @@ const MultiRoomLayout: React.FC<MultiRoomLayoutProps> = ({
   tables,
   selectedTable,
   onTableSelect,
+  onTableDelete,
   onCellClick,
   onRoomGridUpdate,
   tablesWithActiveSales = new Set(),
@@ -67,6 +69,7 @@ const MultiRoomLayout: React.FC<MultiRoomLayoutProps> = ({
                   tables={tables}
                   selectedTable={selectedTable}
                   onTableSelect={onTableSelect}
+                  onTableDelete={onTableDelete}
                   onCellClick={onCellClick}
                   onRoomGridUpdate={onRoomGridUpdate}
                   tablesWithActiveSales={tablesWithActiveSales}

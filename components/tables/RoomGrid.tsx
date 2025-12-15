@@ -2,12 +2,14 @@
 
 import React from "react";
 import { Table, Room } from "@/types";
+import { X } from "lucide-react";
 
 interface RoomGridProps {
   room: Room;
   tables: Table[];
   selectedTable: Table | null;
   onTableSelect: (table: Table) => void;
+  onTableDelete: (tableId: string) => void;
   onCellClick: (roomId: string, x: number, y: number) => void;
   onRoomGridUpdate?: (roomId: string, gridWidth: number, gridHeight: number) => void;
   tablesWithActiveSales?: Set<string>;
@@ -18,6 +20,7 @@ const RoomGrid: React.FC<RoomGridProps> = ({
   tables,
   selectedTable,
   onTableSelect,
+  onTableDelete,
   onCellClick,
   onRoomGridUpdate,
   tablesWithActiveSales = new Set(),
@@ -108,31 +111,44 @@ const RoomGrid: React.FC<RoomGridProps> = ({
 
             if (table) {
               return (
-                <button
-                  key={`${x}-${y}`}
-                  onClick={() => onTableSelect(table)}
-                  className={`w-[60px] aspect-square rounded-lg border-2 p-2 transition-all hover:shadow-md hover:bg-blue-50 flex flex-col items-center justify-center ${getTableColor(
-                    table
-                  )} ${
-                    selectedTable?.id === table.id
-                      ? "ring-2 ring-blue-500 ring-offset-2"
-                      : ""
-                  }`}
-                  onMouseEnter={() => {
-                    // Show new column when hovering over the rightmost column
-                    if (x === room.gridWidth - 1) {
-                      setHoveredColumn(true);
-                    }
-                    // Show new row when hovering over the bottommost row
-                    if (y === room.gridHeight - 1) {
-                      setHoveredRow(true);
-                    }
-                  }}
-                >
-                  <div className="text-xs font-bold text-center leading-tight">
-                    {table.name}
-                  </div>
-                </button>
+                <div key={`${x}-${y}`} className="relative group">
+                  <button
+                    onClick={() => onTableSelect(table)}
+                    className={`w-[60px] aspect-square rounded-lg border-2 p-2 transition-all hover:shadow-md hover:bg-blue-50 flex flex-col items-center justify-center ${getTableColor(
+                      table
+                    )} ${
+                      selectedTable?.id === table.id
+                        ? "ring-2 ring-blue-500 ring-offset-2"
+                        : ""
+                    }`}
+                    onMouseEnter={() => {
+                      // Show new column when hovering over the rightmost column
+                      if (x === room.gridWidth - 1) {
+                        setHoveredColumn(true);
+                      }
+                      // Show new row when hovering over the bottommost row
+                      if (y === room.gridHeight - 1) {
+                        setHoveredRow(true);
+                      }
+                    }}
+                  >
+                    <div className="text-xs font-bold text-center leading-tight">
+                      {table.name}
+                    </div>
+                  </button>
+                  <button
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      if (confirm(`"${table.name}" masasını silmek istediğinize emin misiniz?`)) {
+                        onTableDelete(table.id);
+                      }
+                    }}
+                    className="absolute -top-2 -right-2 bg-red-500 text-white rounded-full p-1 opacity-100 lg:opacity-0 lg:group-hover:opacity-100 transition-all z-10 shadow-sm hover:bg-red-600 scale-75 hover:scale-100"
+                    title="Masayı Sil"
+                  >
+                    <X size={14} />
+                  </button>
+                </div>
               );
             }
 
