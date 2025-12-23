@@ -124,15 +124,41 @@ export const initializeTablesForNewDay = async () => {
 };
 
 export const getAllTables = async () => {
-  // Initialize tables for new day if needed
-  await initializeTablesForNewDay();
-  
-  return await prisma.table.findMany({
-    where: {
-      deletedAt: null,
-    },
-    orderBy: { openedAt: "desc" },
-  });
+  try {
+    // Initialize tables for new day if needed
+    await initializeTablesForNewDay();
+    
+    return await prisma.table.findMany({
+      where: {
+        deletedAt: null,
+      },
+      orderBy: { openedAt: "desc" },
+    });
+  } finally {
+    console.timeEnd("Server: getAllTables");
+  }
+};
+
+export const getActiveSalesTableIds = async () => {
+  console.time("Server: getActiveSalesTableIds");
+  try {
+    const sales = await prisma.sale.findMany({
+      where: {
+        isPaid: false,
+        table: {
+          deletedAt: null,
+        },
+      },
+      select: {
+        tableId: true,
+      },
+      distinct: ['tableId'],
+    });
+
+    return sales.map(s => s.tableId);
+  } finally {
+    console.timeEnd("Server: getActiveSalesTableIds");
+  }
 };
 
 export const getActiveTables = async () => {

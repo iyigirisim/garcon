@@ -10,7 +10,7 @@ import AddOrderModal from "@/components/tables/AddOrderModal";
 import PaymentModal from "@/components/tables/PaymentModal";
 import EndOfDayModal from "@/components/tables/EndOfDayModal";
 import { getAllRooms, createRoom, updateRoom, deleteRoom, optimizeRoomGrid } from "@/actions/room";
-import { getAllTables, createTable, updateTable, deleteTable, getActiveSalesByTable, reopenTable } from "@/actions/table";
+import { getAllTables, createTable, updateTable, deleteTable, getActiveSalesByTable, reopenTable, getActiveSalesTableIds } from "@/actions/table";
 
 import { Plus, Settings } from "lucide-react";
 
@@ -44,33 +44,37 @@ export default function TablesPage() {
   }, [selectedTable]);
 
   const updateActiveSalesStatus = async (tablesToCheck?: Table[]) => {
-    const tablesToProcess = tablesToCheck || tables;
-    const activeSalesMap = new Set<string>();
-    
-    for (const table of tablesToProcess) {
-      if (table.isOpen) {
-        try {
-          const sales = await getActiveSalesByTable(table.id);
-          if (sales.length > 0) {
-            activeSalesMap.add(table.id);
-          }
-        } catch (error) {
-          console.error(`Failed to check active sales for table ${table.id}:`, error);
-        }
+    try {
+      if (tablesToCheck) {
+        // optimizasyon: eger spesifik tablolar verildiyse (nadiren olur), sadece onlari kontrol et
+        const salesIds = await getActiveSalesTableIds();
+        const activeSalesSet = new Set(salesIds);
+        setTablesWithActiveSales(activeSalesSet);
+      } else {
+        // optimizasyon: tek sorguda tüm aktif masalari id olarak çekiyoruz
+        const salesIds = await getActiveSalesTableIds();
+        setTablesWithActiveSales(new Set(salesIds));
       }
+    } catch (error) {
+      console.error("Failed to check active sales:", error);
     }
-    setTablesWithActiveSales(activeSalesMap);
   };
 
   const loadData = async () => {
+    const start = performance.now();
     setIsLoading(true);
     try {
-      const [allRooms, allTables] = await Promise.all([getAllRooms(), getAllTables()]);
+      // Optimizasyon: Tum verileri paralel cek
+      const [allRooms, allTables, salesIds] = await Promise.all([
+        getAllRooms(), 
+        getAllTables(),
+        getActiveSalesTableIds()
+      ]);
+      
       setRooms(allRooms as Room[]);
       setTables(allTables as Table[]);
+      setTablesWithActiveSales(new Set(salesIds));
       
-      // Check active sales for all tables
-      await updateActiveSalesStatus(allTables as Table[]);
     } catch (error) {
       console.error("Failed to load data:", error);
     } finally {
@@ -231,8 +235,8 @@ export default function TablesPage() {
         }
       }
 
-      // Reload data to reflect all changes
-      await loadData();
+      // No need to reload data, local state is already updated
+      // await loadData();
     } catch (error) {
       console.error("Failed to delete table:", error);
       alert("Masa silinemedi");
