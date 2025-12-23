@@ -276,6 +276,7 @@ export const getActiveSalesByTable = async (tableId: string) => {
           product: true,
         },
       },
+      customers: true,
     },
     orderBy: { createdAt: "desc" },
   });
@@ -354,6 +355,53 @@ export const reopenTable = async (tableId: string) => {
       closedAt: null,
       openedAt: dayjs().toDate(),
     },
+  });
+};
+
+export const removeItemFromSale = async (
+  saleId: string,
+  saleItemId: string
+) => {
+  return await prisma.$transaction(async (tx) => {
+    // Check if sale exists and is open
+    const sale = await tx.sale.findUnique({
+      where: { id: saleId },
+      include: { saleItems: true },
+    });
+
+    if (!sale) throw new Error("Sale not found");
+    if (sale.isPaid) throw new Error("Cannot remove items from paid sale");
+
+    // Find the item to remove
+    const itemToRemove = sale.saleItems.find((item) => item.id === saleItemId);
+    if (!itemToRemove) throw new Error("Item not found in sale");
+
+    // Calculate refund amount
+    const refundAmount = itemToRemove.unitPrice * itemToRemove.quantity;
+
+    // Delete the sale item
+    await tx.saleItem.delete({
+      where: { id: saleItemId },
+    });
+
+    // Update sale total
+    const updatedSale = await tx.sale.update({
+      where: { id: saleId },
+      data: {
+        total: {
+          decrement: refundAmount,
+        },
+      },
+      include: {
+        saleItems: {
+          include: {
+            product: true,
+          },
+        },
+      },
+    });
+
+    return updatedSale;
   });
 };
 

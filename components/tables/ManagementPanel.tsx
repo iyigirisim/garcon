@@ -1,7 +1,6 @@
-"use client";
-
-import React from "react";
-import { Table } from "@/types";
+import React, { useEffect, useState } from "react";
+import { Table, Sale } from "@/types";
+import { getActiveSalesByTable, removeItemFromSale } from "@/actions/table";
 import { 
   Plus, 
   CreditCard, 
@@ -9,7 +8,8 @@ import {
   Trash2, 
   LockOpen, 
   Moon, 
-  X 
+  X,
+  ShoppingBag
 } from "lucide-react";
 
 interface ManagementPanelProps {
@@ -35,6 +35,53 @@ const ManagementPanel: React.FC<ManagementPanelProps> = ({
   onDeselect,
   onReopenTable,
 }) => {
+  const [activeSale, setActiveSale] = useState<Sale | null>(null);
+  const [isLoadingSale, setIsLoadingSale] = useState(false);
+
+  useEffect(() => {
+    let isMounted = true;
+
+    const fetchActiveSale = async () => {
+      if (selectedTable && selectedTable.isOpen) {
+        setIsLoadingSale(true);
+        try {
+          const sales = await getActiveSalesByTable(selectedTable.id);
+          if (isMounted) {
+            setActiveSale(sales.length > 0 ? (sales[0] as unknown as Sale) : null);
+          }
+        } catch (error) {
+          console.error("Failed to fetch active sale:", error);
+        } finally {
+          if (isMounted) {
+            setIsLoadingSale(false);
+          }
+        }
+      } else {
+        setActiveSale(null);
+      }
+    };
+
+    fetchActiveSale();
+
+    return () => {
+      isMounted = false;
+    };
+  }, [selectedTable, hasActiveSales]); // Re-fetch when table or hasActiveSales changes
+
+  const handleRemoveItem = async (saleId: string, itemId: string, itemName: string) => {
+    if (!confirm(`${itemName} ürününü siparişten silmek istediğinize emin misiniz?`)) {
+      return;
+    }
+
+    try {
+      const updatedSale = await removeItemFromSale(saleId, itemId);
+      setActiveSale(updatedSale as unknown as Sale); // Type assertion if needed based on return type
+    } catch (error) {
+      console.error("Failed to remove item:", error);
+      alert("Ürün silinemedi.");
+    }
+  };
+
   return (
     <div className="bg-white rounded-lg border border-gray-200 p-6 space-y-4">
       <div className="flex items-center justify-between">
@@ -62,6 +109,51 @@ const ManagementPanel: React.FC<ManagementPanelProps> = ({
               Durum: {selectedTable.isOpen ? "Açık" : "Kapalı"}
               {selectedTable.isTakeAway && " • Paket Servis"}
             </div>
+            
+            {/* Active Order Items */}
+            {selectedTable.isOpen && (
+              <div className="mt-4 pt-3 border-t border-gray-200">
+                <div className="flex items-center gap-2 text-sm text-gray-600 mb-2">
+                  <ShoppingBag className="w-4 h-4" />
+                  <span className="font-medium">Siparişler</span>
+                </div>
+                
+                {isLoadingSale ? (
+                  <div className="text-xs text-gray-500 py-2">Yükleniyor...</div>
+                ) : activeSale && activeSale.saleItems && activeSale.saleItems.length > 0 ? (
+                  <div className="space-y-1 max-h-48 overflow-y-auto">
+                    {activeSale.saleItems.map((item) => (
+                      <div key={item.id} className="flex items-center justify-between text-sm py-1 group">
+                        <div className="flex items-center gap-2">
+                          <span className="w-5 h-5 flex items-center justify-center bg-blue-100 text-blue-700 rounded-full text-xs font-medium">
+                            {item.quantity}
+                          </span>
+                          <span className="text-gray-700">{item.product?.name}</span>
+                        </div>
+                        <div className="flex items-center gap-2">
+                          <span className="text-gray-600 font-medium">
+                            {(item.unitPrice * item.quantity).toFixed(2)} ₺
+                          </span>
+                          <button
+                            onClick={() => handleRemoveItem(activeSale.id, item.id, item.product?.name || "Ürün")}
+                            className="text-gray-400 hover:text-red-600 rounded p-0.5 opacity-0 group-hover:opacity-100 transition-all"
+                            title="Ürünü Sil"
+                          >
+                            <Trash2 className="w-4 h-4" />
+                          </button>
+                        </div>
+                      </div>
+                    ))}
+                    <div className="pt-2 mt-2 border-t border-gray-100 flex justify-between items-center font-bold text-gray-800">
+                      <span>Toplam</span>
+                      <span>{activeSale.total.toFixed(2)} ₺</span>
+                    </div>
+                  </div>
+                ) : (
+                  <div className="text-xs text-gray-400 italic py-2">Henüz sipariş yok</div>
+                )}
+              </div>
+            )}
           </div>
 
           <button
