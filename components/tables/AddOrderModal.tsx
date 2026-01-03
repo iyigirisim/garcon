@@ -9,10 +9,15 @@ interface AddOrderModalProps {
   table: Table | null;
   onClose: () => void;
   onSuccess: () => void;
+  onItemAdded?: () => void;
 }
 
-const AddOrderModal: React.FC<AddOrderModalProps> = ({ table, onClose, onSuccess }) => {
-  const [products, setProducts] = useState<Product[]>([]);
+// Simple in-memory cache
+let productsCache: Product[] = [];
+let isProductsCached = false;
+
+const AddOrderModal: React.FC<AddOrderModalProps> = ({ table, onClose, onSuccess, onItemAdded }) => {
+  const [products, setProducts] = useState<Product[]>(productsCache);
   const [selectedCategory, setSelectedCategory] = useState("all");
   const [searchTerm, setSearchTerm] = useState("");
   const [quantities, setQuantities] = useState<{ [key: string]: number }>({});
@@ -27,8 +32,15 @@ const AddOrderModal: React.FC<AddOrderModalProps> = ({ table, onClose, onSuccess
   }, [table]);
 
   const loadProducts = async () => {
+    if (isProductsCached) {
+      setProducts(productsCache);
+      return;
+    }
+
     try {
       const allProducts = await getProducts();
+      productsCache = allProducts as Product[];
+      isProductsCached = true;
       setProducts(allProducts as Product[]);
     } catch (error) {
       console.error("Failed to load products:", error);
@@ -85,9 +97,14 @@ const AddOrderModal: React.FC<AddOrderModalProps> = ({ table, onClose, onSuccess
 
       // Reset quantity
       setQuantities((prev) => ({ ...prev, [product.id]: 1 }));
+      
+      // Notify parent
+      if (onItemAdded) {
+        onItemAdded();
+      }
 
       // Show success feedback
-      alert(`${quantity}x ${product.name} ${table.name} masasına eklendi`);
+      // alert(`${quantity}x ${product.name} ${table.name} masasına eklendi`);
     } catch (error) {
       console.error("Failed to add product:", error);
       alert("Ürün eklenemedi. Lütfen tekrar deneyin.");

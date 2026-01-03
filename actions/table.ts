@@ -406,6 +406,96 @@ export const removeItemFromSale = async (
 };
 
 
+export const splitSale = async (
+  originalSaleId: string,
+  itemsToMove: { itemId: string; quantity: number }[],
+  tableId: string
+) => {
+  return await prisma.$transaction(async (tx) => {
+    // 1. Create a new sale for the same table
+    const newSale = await tx.sale.create({
+      data: {
+        tableId,
+        total: 0,
+        isPaid: false,
+        isOnCredit: false,
+        openedAt: dayjs().toDate(),
+        createdAt: dayjs().toDate(),
+      },
+    });
+
+    let newSaleTotal = 0;
+    let refundAmountFromOriginal = 0;
+
+    // 2. Process each item to move
+    for (const item of itemsToMove) {
+      const originalItem = await tx.saleItem.findUnique({
+        where: { id: item.itemId },
+      });
+
+      if (!originalItem) throw new Error(`Item ${item.itemId} not found`);
+      if (originalItem.saleId !== originalSaleId)
+        throw new Error(`Item ${item.itemId} does not belong to sale ${originalSaleId}`);
+
+      if (item.quantity === originalItem.quantity) {
+        // Move the entire item to the new sale
+        await tx.saleItem.update({
+          where: { id: item.itemId },
+          data: { saleId: newSale.id },
+        });
+        
+        const itemTotal = originalItem.unitPrice * originalItem.quantity;
+        newSaleTotal += itemTotal;
+        refundAmountFromOriginal += itemTotal;
+        
+      } else if (item.quantity < originalItem.quantity && item.quantity > 0) {
+        // Split the item
+        // 1. Reduce quantity of original item
+        await tx.saleItem.update({
+          where: { id: item.itemId },
+          data: { quantity: originalItem.quantity - item.quantity },
+        });
+
+        // 2. Create new item in new sale
+        await tx.saleItem.create({
+          data: {
+            saleId: newSale.id,
+            productId: originalItem.productId,
+            quantity: item.quantity,
+            unitPrice: originalItem.unitPrice,
+          },
+        });
+
+        const movedTotal = originalItem.unitPrice * item.quantity;
+        newSaleTotal += movedTotal;
+        refundAmountFromOriginal += movedTotal;
+
+      } else {
+         throw new Error(`Invalid quantity ${item.quantity} for item ${item.itemId}`);
+      }
+    }
+
+    // 3. Update totals
+    // Update new sale total
+    await tx.sale.update({
+      where: { id: newSale.id },
+      data: { total: newSaleTotal },
+    });
+
+    // Update original sale total
+    await tx.sale.update({
+      where: { id: originalSaleId },
+      data: { 
+        total: {
+          decrement: refundAmountFromOriginal
+        }
+      },
+    });
+
+    return newSale;
+  });
+};
+
 // export const removeItemFromSale = (
 //   saleId: string,
 //   saleItemId: string

@@ -26,6 +26,7 @@ export default function TablesPage() {
   const [isLoading, setIsLoading] = useState(true);
   const [tablesWithActiveSales, setTablesWithActiveSales] = useState<Set<string>>(new Set());
   const [isMobilePanelOpen, setIsMobilePanelOpen] = useState(false);
+  const [salesUpdateTrigger, setSalesUpdateTrigger] = useState(0);
 
   useEffect(() => {
     loadData();
@@ -41,7 +42,7 @@ export default function TablesPage() {
     } else {
       setHasActiveSales(false);
     }
-  }, [selectedTable]);
+  }, [selectedTable, salesUpdateTrigger]); // Re-check when trigger changes
 
   const updateActiveSalesStatus = async (tablesToCheck?: Table[]) => {
     try {
@@ -307,6 +308,7 @@ export default function TablesPage() {
               hasActiveSales={hasActiveSales}
               onDeselect={() => setSelectedTable(null)}
               onReopenTable={handleTableReopen}
+              refreshTrigger={salesUpdateTrigger}
             />
         </div>
 
@@ -343,6 +345,7 @@ export default function TablesPage() {
                   setIsMobilePanelOpen(false);
                 }}
                 onReopenTable={handleTableReopen}
+                refreshTrigger={salesUpdateTrigger}
               />
             </div>
           </div>
@@ -363,13 +366,18 @@ export default function TablesPage() {
         <AddOrderModal
           table={selectedTable}
           onClose={() => setIsAddingOrder(false)}
+          onItemAdded={() => {
+             // Incremented trigger forces ManagementPanel to reload sales
+             setSalesUpdateTrigger(prev => prev + 1);
+          }}
           onSuccess={async () => {
-            await checkActiveSales();
-            // Update tables data without full reload
-            const updatedTables = await getAllTables();
-            setTables(updatedTables as Table[]);
-            // Update active sales status for all tables
-            await updateActiveSalesStatus(updatedTables as Table[]);
+             // This updates the 'hasActiveSales' state which might be needed if it was false before
+             await checkActiveSales();
+             // We can skip full reload here since onItemAdded updates the list view
+             // But we should update the 'tablesWithActiveSales' set to ensure the dot appears on the map
+             if (selectedTable) {
+                setTablesWithActiveSales(prev => new Set(prev).add(selectedTable.id));
+             }
           }}
         />
       )}

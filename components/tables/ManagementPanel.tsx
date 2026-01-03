@@ -1,6 +1,7 @@
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useState, useRef } from "react";
 import { Table, Sale } from "@/types";
-import { getActiveSalesByTable, removeItemFromSale } from "@/actions/table";
+import { removeItemFromSale } from "@/actions/table"; // Removed getActiveSalesByTable import
+import { useTableSalesCache } from "@/hooks/useTableSalesCache";
 import { 
   Plus, 
   CreditCard, 
@@ -22,6 +23,7 @@ interface ManagementPanelProps {
   hasActiveSales?: boolean;
   onDeselect?: () => void;
   onReopenTable?: (tableId: string) => void;
+  refreshTrigger?: number;
 }
 
 const ManagementPanel: React.FC<ManagementPanelProps> = ({
@@ -34,27 +36,34 @@ const ManagementPanel: React.FC<ManagementPanelProps> = ({
   hasActiveSales,
   onDeselect,
   onReopenTable,
+  refreshTrigger = 0,
 }) => {
   const [activeSale, setActiveSale] = useState<Sale | null>(null);
-  const [isLoadingSale, setIsLoadingSale] = useState(false);
+  // const [isLoadingSale, setIsLoadingSale] = useState(false); // Managed by hook now
+  
+  const { getTableSales, invalidateTableCache, loading: isLoadingSale } = useTableSalesCache();
+  const prevRefreshTrigger = useRef(refreshTrigger);
 
   useEffect(() => {
     let isMounted = true;
 
     const fetchActiveSale = async () => {
       if (selectedTable && selectedTable.isOpen) {
-        setIsLoadingSale(true);
+        // Check if we need to invalidate cache due to refresh trigger
+        if (refreshTrigger !== prevRefreshTrigger.current) {
+             invalidateTableCache(selectedTable.id);
+             prevRefreshTrigger.current = refreshTrigger;
+        }
+
         try {
-          const sales = await getActiveSalesByTable(selectedTable.id);
+          const data = await getTableSales(selectedTable.id);
           if (isMounted) {
-            setActiveSale(sales.length > 0 ? (sales[0] as unknown as Sale) : null);
+             // We use the raw activeSales[0] to maintain existing separate-item behavior for now
+             // If we wanted to show combined items, we'd use data.combinedSaleItems
+             setActiveSale(data.activeSales.length > 0 ? data.activeSales[0] : null);
           }
         } catch (error) {
           console.error("Failed to fetch active sale:", error);
-        } finally {
-          if (isMounted) {
-            setIsLoadingSale(false);
-          }
         }
       } else {
         setActiveSale(null);
@@ -66,7 +75,7 @@ const ManagementPanel: React.FC<ManagementPanelProps> = ({
     return () => {
       isMounted = false;
     };
-  }, [selectedTable, hasActiveSales]); // Re-fetch when table or hasActiveSales changes
+  }, [selectedTable, hasActiveSales, refreshTrigger, getTableSales, invalidateTableCache]);
 
   const handleRemoveItem = async (saleId: string, itemId: string, itemName: string) => {
     if (!confirm(`${itemName} ürününü siparişten silmek istediğinize emin misiniz?`)) {
@@ -75,7 +84,11 @@ const ManagementPanel: React.FC<ManagementPanelProps> = ({
 
     try {
       const updatedSale = await removeItemFromSale(saleId, itemId);
-      setActiveSale(updatedSale as unknown as Sale); // Type assertion if needed based on return type
+      setActiveSale(updatedSale as unknown as Sale);
+      // Invalidate cache since we modified the sale
+      if (selectedTable) {
+        invalidateTableCache(selectedTable.id);
+      }
     } catch (error) {
       console.error("Failed to remove item:", error);
       alert("Ürün silinemedi.");
