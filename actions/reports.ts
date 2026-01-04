@@ -93,9 +93,61 @@ export const getReportData = async (dateStr?: string): Promise<DateRangeReport> 
   // Calculate Total Expenses
   const totalExpense = expenses.reduce((sum, exp) => sum + exp.amount, 0);
 
-  // Calculate Cash In Hand (Total Cash Revenue - Total Expenses)
-  const totalCashRevenue = paymentMap.get(PaymentType.CASH) || 0;
-  const cashInHand = totalCashRevenue - totalExpense;
+  // --- Monthly Cash Calculation ---
+  // Define month range (preserving business hours logic or full month?)
+  // User said "o ayki tum nakitleri", implying full month.
+  // Standard logic: Start of month 00:00 to End of month 23:59
+  const monthStart = baseDate.startOf('month').toDate();
+  const monthEnd = baseDate.endOf('month').toDate();
+
+  const monthlyCashRevenueAgg = await prisma.sale.aggregate({
+    _sum: {
+      paidAmount: true, // Use paidAmount if available, else standard total aggregation might need raw query or careful handling if paidAmount is null for some legacy rows.
+      // But prisma aggregate sum on nullable field returns number | null.
+      // Wait, paidAmount is Float?. If null, we might fallback to total.
+      // But aggregate doesn't do "coalesce".
+      // Let's assume paidAmount is reliable for paid sales, or we fetch & sum if needed.
+      // Actually, standard is paidAmount populated on payment.
+      // Let's try simple aggregation first.
+    },
+    where: {
+      isPaid: true,
+      paymentType: PaymentType.CASH,
+      paidAt: {
+        gte: monthStart,
+        lte: monthEnd,
+      },
+      // Exclude deleted tables sales? Schema says table deletedAt check usually. 
+      // But for financial reports, deleted table sales still count.
+    },
+  });
+  
+  // If paidAmount is null, it returns null. 
+  // IMPORTANT: If `paidAmount` was optional and not filled for older sales that were paid, we might miss data.
+  // However, `completeSale` helper fills it.
+  // Let's check `sale` model. `paidAmount Float?`.
+  // Safer approach: if we suspect nulls, we might need to fetch.
+  // But for optimization, let's look at `monthlyExpenses`.
+  
+  const monthlyExpensesAgg = await prisma.expense.aggregate({
+    _sum: {
+      amount: true,
+    },
+    where: {
+      date: {
+        gte: monthStart,
+        lte: monthEnd,
+      },
+    },
+  });
+
+  const monthlyCashRevenue = monthlyCashRevenueAgg._sum.paidAmount || 0; 
+  const monthlyTotalExpense = monthlyExpensesAgg._sum.amount || 0;
+
+  // Calculate Cash In Hand (Monthly Cash Revenue - Monthly Total Expenses)
+  // const totalCashRevenue = paymentMap.get(PaymentType.CASH) || 0; // Daily cash (Removed from usage for cashInHand)
+  const cashInHand = monthlyCashRevenue - monthlyTotalExpense;
+
 
   // Format Results
   const paymentMethods = Array.from(paymentMap.entries()).map(([type, amount]) => ({

@@ -123,6 +123,7 @@ model Expense {
   category       ExpenseCategory
   description    String?
   image          String?
+  isPaidFromSafe Boolean          @default(true)
   createdById    String?
   createdBy      User?            @relation(fields: [createdById], references: [id])
 }

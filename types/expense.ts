@@ -1,4 +1,4 @@
-import { User } from "./index";
+import { User, PaymentType } from "./index";
 
 export enum ExpenseCategory {
   RENT = "RENT",
@@ -13,6 +13,7 @@ export type Expense = {
   id: string;
   date: Date;
   amount: number;
+  paymentType: PaymentType;
   category: ExpenseCategory;
   description?: string | null;
   createdById?: string | null;
