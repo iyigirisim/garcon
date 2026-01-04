@@ -124,7 +124,6 @@ export const initializeTablesForNewDay = async () => {
 };
 
 export const getAllTables = async () => {
-  console.time("Server: getAllTables");
   try {
     // Initialize tables for new day if needed
     await initializeTablesForNewDay();
@@ -135,13 +134,13 @@ export const getAllTables = async () => {
       },
       orderBy: { openedAt: "desc" },
     });
-  } finally {
-    console.timeEnd("Server: getAllTables");
+  } catch (error) {
+    console.error("Error fetching tables:", error);
+    throw error;
   }
 };
 
 export const getActiveSalesTableIds = async () => {
-  console.time("Server: getActiveSalesTableIds");
   try {
     const sales = await prisma.sale.findMany({
       where: {
@@ -157,8 +156,9 @@ export const getActiveSalesTableIds = async () => {
     });
 
     return sales.map(s => s.tableId);
-  } finally {
-    console.timeEnd("Server: getActiveSalesTableIds");
+  } catch (error) {
+    console.error("Error fetching active sales table IDs:", error);
+    throw error;
   }
 };
 
