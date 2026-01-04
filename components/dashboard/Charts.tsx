@@ -7,24 +7,24 @@ export function DailySalesChart({ className }: { className?: string }) {
   const bars = [80, 60, 70, 65, 90, 55, 58, 62, 30, 28, 40, 45]
   return (
     <div className={cn("rounded-2xl bg-accent/60 p-4", className)}>
-      <div className="text-sm font-medium text-muted-foreground">Overview</div>
-      <div className="text-xs text-muted-foreground">Today</div>
+      <div className="text-sm font-medium text-muted-foreground">Genel Bakış</div>
+      <div className="text-xs text-muted-foreground">Bugün</div>
     </div>
   )
 }
 
 export function CategoryBar({ className }: { className?: string }) {
   const segments = [
-    { color: "hsl(var(--chart-1))", value: 44, label: "Food" },
-    { color: "hsl(var(--chart-2))", value: 28, label: "Drinks" },
-    { color: "hsl(var(--chart-3))", value: 18, label: "Dessert" },
-    { color: "hsl(var(--chart-4))", value: 10, label: "Other" },
+    { color: "hsl(var(--chart-1))", value: 44, label: "Yiyecek" },
+    { color: "hsl(var(--chart-2))", value: 28, label: "İçecek" },
+    { color: "hsl(var(--chart-3))", value: 18, label: "Tatlı" },
+    { color: "hsl(var(--chart-4))", value: 10, label: "Diğer" },
   ]
   const total = segments.reduce((a, b) => a + b.value, 0)
   let acc = 0
   return (
     <div className={cn("rounded-xl border p-4", className)}>
-      <div className="mb-2 text-sm font-medium">Category Mix</div>
+      <div className="mb-2 text-sm font-medium">Kategori Dağılımı</div>
       <div className="flex h-3 w-full overflow-hidden rounded-full">
         {segments.map((s, i) => {
           const w = `${(s.value / total) * 100}%`

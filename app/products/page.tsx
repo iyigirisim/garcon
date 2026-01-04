@@ -20,6 +20,7 @@ import {
 } from "@/components/ui/dialog";
 import { useProductsCache } from "@/hooks/useDataCache";
 import { createProduct, updateProduct, deleteProduct } from "@/actions/product";
+import { getCategories, createCategory, deleteCategory } from "@/actions/category";
 
 interface ProductFormData {
   name: string;
@@ -39,21 +40,26 @@ const initialFormData: ProductFormData = {
   isAvailable: true,
 };
 
+interface Category {
+  id: string;
+  name: string;
+}
+
 export default function ProductsPage() {
   const [products, setProducts] = useState<Product[]>([]);
+  const [categories, setCategories] = useState<Category[]>([]);
   const [showForm, setShowForm] = useState(false);
   const [showCategoriesDialog, setShowCategoriesDialog] = useState(false);
   const [editingProduct, setEditingProduct] = useState<Product | null>(null);
   const [formData, setFormData] = useState<ProductFormData>(initialFormData);
   const [submitting, setSubmitting] = useState(false);
-  const [availableCategories, setAvailableCategories] = useState<string[]>([]);
-  const [editableCategories, setEditableCategories] = useState<string[]>([]);
   const [newCategory, setNewCategory] = useState("");
 
   const { loading, fetchProducts: fetchProductsFromCache, invalidateProducts } = useProductsCache();
 
   useEffect(() => {
     loadProducts();
+    loadCategories();
   }, []);
 
   const loadProducts = async () => {
@@ -65,15 +71,16 @@ export default function ProductsPage() {
     }
   };
 
-  useEffect(() => {
-    // Extract unique categories from existing products, lowercase and deduplicate
-    const allCategories = [
-      ...products.map(p => p.mainCategory?.toLowerCase() || ""),
-      ...products.flatMap(p => (p.category || []).map(cat => cat.toLowerCase()))
-    ];
-    const uniqueCategories = Array.from(new Set(allCategories)).filter(Boolean);
-    setAvailableCategories(uniqueCategories);
-  }, [products]);
+  const loadCategories = async () => {
+    try {
+      const result = await getCategories();
+      if (result.success && result.data) {
+        setCategories(result.data);
+      }
+    } catch (error) {
+      console.error("Error loading categories:", error);
+    }
+  };
 
   const refreshProducts = async () => {
     try {
@@ -92,7 +99,6 @@ export default function ProductsPage() {
       let result;
       
       if (editingProduct) {
-        // Only include fields that have changed or are relevant
         result = await updateProduct(editingProduct.id, {
           name: formData.name,
           price: formData.price,
@@ -167,26 +173,30 @@ export default function ProductsPage() {
   };
 
   const openCategoriesDialog = () => {
-    setEditableCategories([...availableCategories]);
     setShowCategoriesDialog(true);
   };
 
-  const handleAddCategory = () => {
-    const trimmedCategory = newCategory.trim().toLowerCase();
-    if (trimmedCategory && !editableCategories.includes(trimmedCategory)) {
-      setEditableCategories(prev => [...prev, trimmedCategory]);
-      setNewCategory("");
+  const handleAddCategory = async () => {
+    const trimmedCategory = newCategory.trim();
+    if (trimmedCategory) {
+      const result = await createCategory(trimmedCategory);
+      if (result.success) {
+        setNewCategory("");
+        loadCategories();
+      } else {
+         alert(`Error creating category: ${result.error}`);
+      }
     }
   };
 
-  const handleRemoveCategory = (categoryToRemove: string) => {
-    setEditableCategories(prev => prev.filter(cat => cat !== categoryToRemove));
-  };
-
-  const saveCategoriesChanges = () => {
-    setAvailableCategories(editableCategories);
-    setShowCategoriesDialog(false);
-    setNewCategory("");
+  const handleRemoveCategory = async (id: string) => {
+    if (!confirm("Are you sure you want to delete this category?")) return;
+    const result = await deleteCategory(id);
+    if (result.success) {
+      loadCategories();
+    } else {
+      alert(`Error deleting category: ${result.error}`);
+    }
   };
 
   const handleCategoryChange = (category: string, checked: boolean) => {
@@ -206,8 +216,8 @@ export default function ProductsPage() {
   if (loading) {
     return (
       <div className="p-6">
-        <h1 className="text-4xl font-bold mb-6">Products</h1>
-        <div>Loading...</div>
+        <h1 className="text-4xl font-bold mb-6">Ürünler</h1>
+        <div>Yükleniyor...</div>
       </div>
     );
   }
@@ -215,23 +225,23 @@ export default function ProductsPage() {
   return (
     <div className="p-6">
       <div className="flex justify-between items-center mb-6">
-        <h1 className="text-4xl font-bold">Products</h1>
+        <h1 className="text-4xl font-bold">Ürünler</h1>
         <div className="space-x-2">
           <Button variant="outline" onClick={openCategoriesDialog}>
-            Edit Categories
+            Kategorileri Düzenle
           </Button>
-          <Button onClick={() => setShowForm(true)}>Add Product</Button>
+          <Button onClick={() => setShowForm(true)}>Ürün Ekle</Button>
         </div>
       </div>
 
       <Dialog open={showForm} onOpenChange={setShowForm}>
         <DialogContent className="max-w-2xl">
           <DialogHeader>
-            <DialogTitle>{editingProduct ? "Edit Product" : "Add New Product"}</DialogTitle>
+            <DialogTitle>{editingProduct ? "Ürünü Düzenle" : "Yeni Ürün Ekle"}</DialogTitle>
           </DialogHeader>
           <form onSubmit={handleSubmit} className="space-y-4">
             <div>
-              <label className="block text-sm font-medium mb-1">Name</label>
+              <label className="block text-sm font-medium mb-1">İsim</label>
               <input
                 type="text"
                 required
@@ -242,7 +252,7 @@ export default function ProductsPage() {
             </div>
 
             <div>
-              <label className="block text-sm font-medium mb-1">Price</label>
+              <label className="block text-sm font-medium mb-1">Fiyat</label>
               <input
                 type="number"
                 step="0.01"
@@ -255,7 +265,7 @@ export default function ProductsPage() {
             </div>
 
             <div>
-              <label className="block text-sm font-medium mb-1">Description</label>
+              <label className="block text-sm font-medium mb-1">Açıklama</label>
               <textarea
                 value={formData.description}
                 onChange={(e) => setFormData({ ...formData, description: e.target.value })}
@@ -265,50 +275,41 @@ export default function ProductsPage() {
             </div>
 
             <div>
-              <label className="block text-sm font-medium mb-1">Main Category</label>
-              <input
-                type="text"
+              <label className="block text-sm font-medium mb-1">Ana Kategori</label>
+              <select
                 required
                 value={formData.mainCategory}
                 onChange={(e) => setFormData({ ...formData, mainCategory: e.target.value })}
                 className="w-full p-2 border border-gray-300 rounded-md"
-                placeholder="Enter main category"
-                list="main-categories"
-              />
-              <datalist id="main-categories">
-                {availableCategories.map(cat => (
-                  <option key={cat} value={cat} />
+              >
+                <option value="">Ana kategori seçin</option>
+                {categories.map(cat => (
+                  <option key={cat.id} value={cat.name}>{cat.name}</option>
                 ))}
-              </datalist>
+              </select>
             </div>
 
             <div>
-              <label className="block text-sm font-medium mb-2">Categories</label>
+              <label className="block text-sm font-medium mb-2">Kategoriler</label>
               <div className="space-y-2">
-                <input
-                  type="text"
-                  placeholder="Add category (press Enter)"
-                  className="w-full p-2 border border-gray-300 rounded-md"
-                  onKeyPress={(e) => {
-                    if (e.key === 'Enter') {
-                      e.preventDefault();
-                      const value = (e.target as HTMLInputElement).value.trim();
-                      if (value && !formData.category.includes(value)) {
-                        setFormData(prev => ({
-                          ...prev,
-                          category: [...prev.category, value]
-                        }));
-                        (e.target as HTMLInputElement).value = '';
-                      }
+                <select
+                  value=""
+                  onChange={(e) => {
+                    const value = e.target.value;
+                    if (value && !formData.category.includes(value)) {
+                      setFormData(prev => ({
+                        ...prev,
+                        category: [...prev.category, value]
+                      }));
                     }
                   }}
-                  list="available-categories"
-                />
-                <datalist id="available-categories">
-                  {availableCategories.map(cat => (
-                    <option key={cat} value={cat} />
+                  className="w-full p-2 border border-gray-300 rounded-md"
+                >
+                  <option value="">Kategori ekle...</option>
+                  {categories.filter(c => !formData.category.includes(c.name)).map(cat => (
+                    <option key={cat.id} value={cat.name}>{cat.name}</option>
                   ))}
-                </datalist>
+                </select>
                 <div className="flex flex-wrap gap-2 mt-2">
                   {formData.category.map((cat, index) => (
                     <span
@@ -337,15 +338,15 @@ export default function ProductsPage() {
                 onChange={(e) => setFormData({ ...formData, isAvailable: e.target.checked })}
                 className="rounded"
               />
-              <label htmlFor="isAvailable" className="text-sm font-medium">Available</label>
+              <label htmlFor="isAvailable" className="text-sm font-medium">Mevcut</label>
             </div>
 
             <DialogFooter>
               <Button type="button" variant="outline" onClick={resetForm}>
-                Cancel
+                İptal
               </Button>
               <Button type="submit" disabled={submitting}>
-                {submitting ? "Saving..." : (editingProduct ? "Update" : "Create")}
+                {submitting ? "Kaydediliyor..." : (editingProduct ? "Güncelle" : "Oluştur")}
               </Button>
             </DialogFooter>
           </form>
@@ -357,12 +358,12 @@ export default function ProductsPage() {
           <Table>
             <TableHeader>
               <TableRow>
-                <TableHead>Name</TableHead>
-                <TableHead>Price</TableHead>
-                <TableHead>Main Category</TableHead>
-                <TableHead>Categories</TableHead>
-                <TableHead>Status</TableHead>
-                <TableHead>Actions</TableHead>
+                <TableHead>İsim</TableHead>
+                <TableHead>Fiyat</TableHead>
+                <TableHead>Ana Kategori</TableHead>
+                <TableHead>Kategoriler</TableHead>
+                <TableHead>Durum</TableHead>
+                <TableHead>İşlemler</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
@@ -402,7 +403,7 @@ export default function ProductsPage() {
                           : "bg-red-100 text-red-800"
                       }`}
                     >
-                      {product.isAvailable ? "Available" : "Unavailable"}
+                      {product.isAvailable ? "Mevcut" : "Mevcut Değil"}
                     </span>
                   </TableCell>
                   <TableCell className="space-x-2">
@@ -411,7 +412,7 @@ export default function ProductsPage() {
                       variant="outline"
                       onClick={() => handleEdit(product)}
                     >
-                      Edit
+                      Düzenle
                     </Button>
                     <Button
                       size="sm"
@@ -419,7 +420,7 @@ export default function ProductsPage() {
                       onClick={() => handleDelete(product.id)}
                       className="text-red-600 hover:text-red-800"
                     >
-                      Delete
+                      Sil
                     </Button>
                   </TableCell>
                 </TableRow>
@@ -430,7 +431,7 @@ export default function ProductsPage() {
 
         {products.length === 0 && (
           <div className="text-center py-8 text-gray-500">
-            No products found. Add your first product to get started.
+            Ürün bulunamadı. İlk ürününüzü ekleyerek başlayın.
           </div>
         )}
       </div>
@@ -438,11 +439,11 @@ export default function ProductsPage() {
       <Dialog open={showCategoriesDialog} onOpenChange={setShowCategoriesDialog}>
         <DialogContent className="max-w-lg">
           <DialogHeader>
-            <DialogTitle>Edit Categories</DialogTitle>
+            <DialogTitle>Kategorileri Düzenle</DialogTitle>
           </DialogHeader>
           <div className="space-y-4">
             <div>
-              <label className="block text-sm font-medium mb-2">Add New Category</label>
+              <label className="block text-sm font-medium mb-2">Yeni Kategori Ekle</label>
               <div className="flex space-x-2">
                 <input
                   type="text"
@@ -454,35 +455,35 @@ export default function ProductsPage() {
                       handleAddCategory();
                     }
                   }}
-                  placeholder="Category name"
+                  placeholder="Kategori adı"
                   className="flex-1 p-2 border border-gray-300 rounded-md"
                 />
                 <Button type="button" onClick={handleAddCategory}>
-                  Add
+                   Ekle
                 </Button>
               </div>
             </div>
 
             <div>
-              <label className="block text-sm font-medium mb-2">Current Categories</label>
+              <label className="block text-sm font-medium mb-2">Mevcut Kategoriler</label>
               <div className="space-y-2 max-h-60 overflow-y-auto">
-                {editableCategories.length === 0 ? (
-                  <p className="text-gray-500 text-sm">No categories available</p>
+                {categories.length === 0 ? (
+                  <p className="text-gray-500 text-sm">Mevcut kategori yok</p>
                 ) : (
-                  editableCategories.map((category, index) => (
+                  categories.map((category) => (
                     <div
-                      key={index}
+                      key={category.id}
                       className="flex items-center justify-between p-2 border border-gray-200 rounded-md"
                     >
-                      <span className="text-sm capitalize">{category}</span>
+                      <span className="text-sm">{category.name}</span>
                       <Button
                         type="button"
                         variant="outline"
                         size="sm"
-                        onClick={() => handleRemoveCategory(category)}
+                        onClick={() => handleRemoveCategory(category.id)}
                         className="text-red-600 hover:text-red-800"
                       >
-                        Remove
+                        Sil
                       </Button>
                     </div>
                   ))
@@ -493,10 +494,7 @@ export default function ProductsPage() {
 
           <DialogFooter>
             <Button type="button" variant="outline" onClick={() => setShowCategoriesDialog(false)}>
-              Cancel
-            </Button>
-            <Button type="button" onClick={saveCategoriesChanges}>
-              Save Changes
+              Kapat
             </Button>
           </DialogFooter>
         </DialogContent>

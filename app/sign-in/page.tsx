@@ -1,7 +1,7 @@
 export default function Page() {
   return (
     <div>
-      <h1 className="text-4xl font-bold">Auth</h1>
+      <h1 className="text-4xl font-bold">Giriş Yap</h1>
     </div>
   );
 }

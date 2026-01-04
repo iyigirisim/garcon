@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
+import { useSearchParams } from "next/navigation";
 import { Expense, ExpenseCategory } from "@/types/expense";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
@@ -20,28 +21,35 @@ import {
   DialogFooter,
 } from "@/components/ui/dialog";
 import { useExpensesCache } from "@/hooks/useDataCache";
+import MonthNavigator from "@/components/reports/MonthNavigator";
+import dayjs from "dayjs";
+import { compressImage } from "@/utils/image/compress";
+import { createClient } from "@/utils/supabase/client";
+import { Loader2, Upload, ImageIcon, X } from "lucide-react";
 
 interface ExpenseFormData {
-  amount: number;
+  amount: string;
   category: ExpenseCategory;
   description: string;
   date: string;
+  image?: string;
 }
 
 const initialFormData: ExpenseFormData = {
-  amount: 0,
+  amount: "",
   category: ExpenseCategory.OTHER,
   description: "",
   date: new Date().toISOString().split('T')[0],
+  image: "",
 };
 
 const categoryLabels = {
-  [ExpenseCategory.RENT]: "Rent",
-  [ExpenseCategory.BILL]: "Bill",
-  [ExpenseCategory.SUPPLY]: "Supply",
-  [ExpenseCategory.SALARY]: "Salary",
-  [ExpenseCategory.TAX]: "Tax",
-  [ExpenseCategory.OTHER]: "Other",
+  [ExpenseCategory.RENT]: "Kira",
+  [ExpenseCategory.BILL]: "Fatura/Fiş",
+  [ExpenseCategory.SUPPLY]: "Malzeme",
+  [ExpenseCategory.SALARY]: "Maaş",
+  [ExpenseCategory.TAX]: "Vergi",
+  [ExpenseCategory.OTHER]: "Diğer",
 };
 
 export default function ExpensesPage() {
@@ -50,16 +58,27 @@ export default function ExpensesPage() {
   const [editingExpense, setEditingExpense] = useState<Expense | null>(null);
   const [formData, setFormData] = useState<ExpenseFormData>(initialFormData);
   const [submitting, setSubmitting] = useState(false);
+  const [uploading, setUploading] = useState(false);
+  const [selectedImage, setSelectedImage] = useState<string | null>(null);
+
+  const searchParams = useSearchParams();
+  const monthParam = searchParams.get("month");
+  const currentMonth = monthParam ? dayjs(monthParam) : dayjs();
+
+  // Calculate start and end of the selected month
+  const startDate = currentMonth.startOf('month').format('YYYY-MM-DD');
+  const endDate = currentMonth.endOf('month').format('YYYY-MM-DD');
 
   const { loading, fetchExpenses: fetchExpensesFromCache, invalidateExpenses } = useExpensesCache();
+  const supabase = createClient();
 
   useEffect(() => {
     loadExpenses();
-  }, []);
+  }, [startDate, endDate]);
 
   const loadExpenses = async () => {
     try {
-      const data = await fetchExpensesFromCache();
+      const data = await fetchExpensesFromCache(startDate, endDate);
       setExpenses(data);
     } catch (error) {
       console.error("Error loading expenses:", error);
@@ -68,11 +87,56 @@ export default function ExpensesPage() {
 
   const refreshExpenses = async () => {
     try {
-      const data = await fetchExpensesFromCache(true); // Force refresh
+      const data = await fetchExpensesFromCache(startDate, endDate, true); // Force refresh
       setExpenses(data);
     } catch (error) {
       console.error("Error refreshing expenses:", error);
     }
+  };
+
+  const handleImageSelect = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (!e.target.files || e.target.files.length === 0) return;
+
+    const file = e.target.files[0];
+    setUploading(true);
+
+    try {
+      const compressedFile = await compressImage(file);
+      
+      const fileName = `${Date.now()}-${file.name.replace(/[^a-zA-Z0-9.]/g, '')}`;
+      const { data, error } = await supabase.storage
+        .from('expenses')
+        .upload(fileName, compressedFile, {
+          cacheControl: '3600',
+          upsert: false
+        });
+
+      if (error) throw error;
+
+      const { data: { publicUrl } } = supabase.storage
+        .from('expenses')
+        .getPublicUrl(fileName);
+
+      setFormData(prev => ({ ...prev, image: publicUrl }));
+    } catch (error) {
+      console.error("Error uploading image:", error);
+      alert("Resim yüklenirken bir hata oluştu.");
+    } finally {
+      setUploading(false);
+    }
+  };
+
+  const handleRemoveImage = () => {
+    setFormData(prev => ({ ...prev, image: "" }));
+  };
+
+  const handleAmountChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+      const val = e.target.value;
+      if (val === "" || /^\d*\.?\d*$/.test(val)) {
+          setFormData({ ...formData, amount: val });
+      } else {
+          alert("Lütfen geçerli bir sayı giriniz");
+      }
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -82,13 +146,18 @@ export default function ExpensesPage() {
     try {
       const url = editingExpense ? `/api/expenses/${editingExpense.id}` : "/api/expenses";
       const method = editingExpense ? "PUT" : "POST";
+      
+      const payload = {
+        ...formData,
+        amount: parseFloat(formData.amount) || 0
+      };
 
       const response = await fetch(url, {
         method,
         headers: {
           "Content-Type": "application/json",
         },
-        body: JSON.stringify(formData),
+        body: JSON.stringify(payload),
       });
 
       if (response.ok) {
@@ -108,10 +177,11 @@ export default function ExpensesPage() {
   const handleEdit = (expense: Expense) => {
     setEditingExpense(expense);
     setFormData({
-      amount: expense.amount,
+      amount: expense.amount.toString(),
       category: expense.category,
       description: expense.description || "",
       date: new Date(expense.date).toISOString().split('T')[0],
+      image: (expense as any).image || "",
     });
     setShowForm(true);
   };
@@ -156,8 +226,8 @@ export default function ExpensesPage() {
   if (loading) {
     return (
       <div className="p-6">
-        <h1 className="text-4xl font-bold mb-6">Expenses</h1>
-        <div>Loading...</div>
+        <h1 className="text-4xl font-bold mb-6">Harcamalar</h1>
+        <div>Yükleniyor...</div>
       </div>
     );
   }
@@ -165,9 +235,11 @@ export default function ExpensesPage() {
   return (
     <div className="p-6">
       <div className="flex justify-between items-center mb-6">
-        <h1 className="text-4xl font-bold">Expenses</h1>
-        <Button onClick={() => setShowForm(true)}>Add Expense</Button>
+        <h1 className="text-4xl font-bold">Harcamalar</h1>
+        <Button onClick={() => setShowForm(true)}>Harcama Ekle</Button>
       </div>
+
+      <MonthNavigator />
 
       {expenses.length > 0 && (
         <div className="mb-6">
@@ -175,7 +247,7 @@ export default function ExpensesPage() {
             <CardContent className="pt-6">
               <div className="text-center">
                 <div className="text-2xl font-bold text-red-600">
-                  Total Expenses: {formatCurrency(getTotalExpenses())}
+                  Toplam Harcama: {formatCurrency(getTotalExpenses())}
                 </div>
               </div>
             </CardContent>
@@ -186,24 +258,23 @@ export default function ExpensesPage() {
       <Dialog open={showForm} onOpenChange={setShowForm}>
         <DialogContent className="max-w-lg">
           <DialogHeader>
-            <DialogTitle>{editingExpense ? "Edit Expense" : "Add New Expense"}</DialogTitle>
+            <DialogTitle>{editingExpense ? "Harcamayı Düzenle" : "Yeni Harcama Ekle"}</DialogTitle>
           </DialogHeader>
           <form onSubmit={handleSubmit} className="space-y-4">
             <div>
-              <label className="block text-sm font-medium mb-1">Amount *</label>
+              <label className="block text-sm font-medium mb-1">Tutar *</label>
               <input
-                type="number"
-                step="0.01"
-                min="0"
+                type="text"
                 required
                 value={formData.amount}
-                onChange={(e) => setFormData({ ...formData, amount: parseFloat(e.target.value) || 0 })}
+                onChange={handleAmountChange}
+                placeholder="0.00"
                 className="w-full p-2 border border-gray-300 rounded-md"
               />
             </div>
 
             <div>
-              <label className="block text-sm font-medium mb-1">Category *</label>
+              <label className="block text-sm font-medium mb-1">Kategori *</label>
               <select
                 required
                 value={formData.category}
@@ -219,7 +290,7 @@ export default function ExpensesPage() {
             </div>
 
             <div>
-              <label className="block text-sm font-medium mb-1">Date *</label>
+              <label className="block text-sm font-medium mb-1">Tarih *</label>
               <input
                 type="date"
                 required
@@ -230,38 +301,85 @@ export default function ExpensesPage() {
             </div>
 
             <div>
-              <label className="block text-sm font-medium mb-1">Description</label>
+              <label className="block text-sm font-medium mb-1">Açıklama</label>
               <textarea
                 value={formData.description}
                 onChange={(e) => setFormData({ ...formData, description: e.target.value })}
                 className="w-full p-2 border border-gray-300 rounded-md"
                 rows={3}
-                placeholder="Enter expense description..."
+                placeholder="Harcama açıklaması girin..."
               />
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium mb-1">Fiş/Fatura Görseli</label>
+              <div className="flex items-center gap-4">
+                {formData.image ? (
+                  <div className="relative w-full h-40 bg-gray-100 rounded-lg overflow-hidden border">
+                     <img src={formData.image} alt="Expense receipt" className="w-full h-full object-contain" />
+                     <button
+                        type="button"
+                        onClick={handleRemoveImage}
+                        className="absolute top-2 right-2 p-1 bg-red-500 text-white rounded-full hover:bg-red-600 transition-colors"
+                     >
+                       <X size={16} />
+                     </button>
+                  </div>
+                ) : (
+                  <label className="flex flex-col items-center justify-center w-full h-32 border-2 border-dashed border-gray-300 rounded-lg cursor-pointer bg-gray-50 hover:bg-gray-100 transition-colors">
+                    <div className="flex flex-col items-center justify-center pt-5 pb-6">
+                      {uploading ? (
+                         <Loader2 className="w-8 h-8 text-gray-500 animate-spin" />
+                      ) : (
+                        <>
+                           <Upload className="w-8 h-8 text-gray-400 mb-2" />
+                           <p className="text-sm text-gray-500">Görsel yüklemek için tıklayın</p>
+                        </>
+                      )}
+                    </div>
+                    <input 
+                        type="file" 
+                        className="hidden" 
+                        accept="image/*" 
+                        onChange={handleImageSelect}
+                        disabled={uploading}
+                    />
+                  </label>
+                )}
+              </div>
             </div>
 
             <DialogFooter>
               <Button type="button" variant="outline" onClick={resetForm}>
-                Cancel
+                İptal
               </Button>
-              <Button type="submit" disabled={submitting}>
-                {submitting ? "Saving..." : (editingExpense ? "Update" : "Create")}
+              <Button type="submit" disabled={submitting || uploading}>
+                {submitting ? "Kaydediliyor..." : (editingExpense ? "Güncelle" : "Oluştur")}
               </Button>
             </DialogFooter>
           </form>
         </DialogContent>
       </Dialog>
+      
+      {selectedImage && (
+        <Dialog open={!!selectedImage} onOpenChange={() => setSelectedImage(null)}>
+            <DialogContent className="max-w-3xl p-0 overflow-hidden">
+                <img src={selectedImage} alt="Receipt Full" className="w-full h-auto max-h-[80vh] object-contain" />
+            </DialogContent>
+        </Dialog>
+      )}
 
       <div className="grid gap-4">
         <div className="bg-white rounded-lg border">
           <Table>
             <TableHeader>
               <TableRow>
-                <TableHead>Date</TableHead>
-                <TableHead>Amount</TableHead>
-                <TableHead>Category</TableHead>
-                <TableHead>Description</TableHead>
-                <TableHead>Actions</TableHead>
+                <TableHead>Tarih</TableHead>
+                <TableHead>Görsel</TableHead>
+                <TableHead>Tutar</TableHead>
+                <TableHead>Kategori</TableHead>
+                <TableHead>Açıklama</TableHead>
+                <TableHead>İşlemler</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
@@ -269,6 +387,20 @@ export default function ExpensesPage() {
                 <TableRow key={expense.id}>
                   <TableCell>
                     {formatDate(expense.date)}
+                  </TableCell>
+                  <TableCell>
+                    {(expense as any).image ? (
+                        <button 
+                            onClick={() => setSelectedImage((expense as any).image)}
+                            className="w-10 h-10 rounded overflow-hidden border hover:opacity-80 transition-opacity"
+                        >
+                            <img src={(expense as any).image} alt="Receipt" className="w-full h-full object-cover" />
+                        </button>
+                    ) : (
+                        <div className="w-10 h-10 rounded bg-gray-100 flex items-center justify-center text-gray-300">
+                            <ImageIcon size={16} />
+                        </div>
+                    )}
                   </TableCell>
                   <TableCell>
                     <div className="text-sm font-medium text-red-600">
@@ -291,7 +423,7 @@ export default function ExpensesPage() {
                       variant="outline"
                       onClick={() => handleEdit(expense)}
                     >
-                      Edit
+                      Düzenle
                     </Button>
                     <Button
                       size="sm"
@@ -299,7 +431,7 @@ export default function ExpensesPage() {
                       onClick={() => handleDelete(expense.id)}
                       className="text-red-600 hover:text-red-800"
                     >
-                      Delete
+                      Sil
                     </Button>
                   </TableCell>
                 </TableRow>
@@ -310,7 +442,7 @@ export default function ExpensesPage() {
 
         {expenses.length === 0 && (
           <div className="text-center py-8 text-gray-500">
-            No expenses found. Add your first expense to get started.
+            Harcama bulunamadı. İlk harcamanızı ekleyerek başlayın.
           </div>
         )}
       </div>

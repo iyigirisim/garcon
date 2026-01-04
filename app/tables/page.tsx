@@ -10,11 +10,13 @@ import AddOrderModal from "@/components/tables/AddOrderModal";
 import PaymentModal from "@/components/tables/PaymentModal";
 import EndOfDayModal from "@/components/tables/EndOfDayModal";
 import { getAllRooms, createRoom, updateRoom, deleteRoom, optimizeRoomGrid } from "@/actions/room";
-import { getAllTables, createTable, updateTable, deleteTable, getActiveSalesByTable, reopenTable, getActiveSalesTableIds } from "@/actions/table";
+import { createTable, updateTable, deleteTable, getActiveSalesByTable, reopenTable } from "@/actions/table";
+import { useTablesDataCache } from "@/hooks/useDataCache";
 
 import { Plus, Settings } from "lucide-react";
 
 export default function TablesPage() {
+  const { fetchRooms, fetchTables, fetchActiveSalesTableIds, invalidateRooms, invalidateTables, invalidateActiveSales } = useTablesDataCache();
   const [rooms, setRooms] = useState<Room[]>([]);
   const [tables, setTables] = useState<Table[]>([]);
   const [selectedTable, setSelectedTable] = useState<Table | null>(null);
@@ -48,12 +50,12 @@ export default function TablesPage() {
     try {
       if (tablesToCheck) {
         // optimizasyon: eger spesifik tablolar verildiyse (nadiren olur), sadece onlari kontrol et
-        const salesIds = await getActiveSalesTableIds();
+        const salesIds = await fetchActiveSalesTableIds(true) as string[];
         const activeSalesSet = new Set(salesIds);
         setTablesWithActiveSales(activeSalesSet);
       } else {
         // optimizasyon: tek sorguda tüm aktif masalari id olarak çekiyoruz
-        const salesIds = await getActiveSalesTableIds();
+        const salesIds = await fetchActiveSalesTableIds(true) as string[];
         setTablesWithActiveSales(new Set(salesIds));
       }
     } catch (error) {
@@ -67,9 +69,9 @@ export default function TablesPage() {
     try {
       // Optimizasyon: Tum verileri paralel cek
       const [allRooms, allTables, salesIds] = await Promise.all([
-        getAllRooms(), 
-        getAllTables(),
-        getActiveSalesTableIds()
+        fetchRooms(), 
+        fetchTables(),
+        fetchActiveSalesTableIds()
       ]);
       
       setRooms(allRooms as Room[]);
@@ -99,6 +101,7 @@ export default function TablesPage() {
     try {
       const newRoom = await createRoom(name, color, rooms.length, 3, 3);
       setRooms([...rooms, newRoom as Room]);
+      invalidateRooms();
     } catch (error) {
       console.error("Failed to create room:", error);
       alert("Oda oluşturulamadı");
@@ -112,6 +115,7 @@ export default function TablesPage() {
     try {
       const updatedRoom = await updateRoom(roomId, data);
       setRooms(rooms.map((r) => (r.id === roomId ? (updatedRoom as Room) : r)));
+      invalidateRooms();
     } catch (error) {
       console.error("Failed to update room:", error);
       alert("Oda güncellenemedi");
@@ -122,6 +126,7 @@ export default function TablesPage() {
     try {
       await deleteRoom(roomId);
       setRooms(rooms.filter((r) => r.id !== roomId));
+      invalidateRooms();
       loadData(); // Reload to update unassigned tables
     } catch (error) {
       console.error("Failed to delete room:", error);
@@ -140,6 +145,7 @@ export default function TablesPage() {
     try {
       const newTable = await createTable(name, undefined, roomId, x, y, false);
       setTables([...tables, newTable as Table]);
+      invalidateTables();
     } catch (error) {
       console.error("Failed to create table:", error);
       alert("Masa oluşturulamadı");
@@ -150,6 +156,7 @@ export default function TablesPage() {
     // Optimize grid size: remove empty rows/columns while keeping 3x3 minimum
     const optimized = await optimizeRoomGrid(roomId, gridWidth, gridHeight);
     await handleRoomUpdate(roomId, { gridWidth: optimized.width, gridHeight: optimized.height });
+    invalidateRooms();
   };
 
   const handleTableUpdate = async (tableId: string, data: Partial<Table>) => {
@@ -160,12 +167,13 @@ export default function TablesPage() {
       if (selectedTable?.id === tableId) {
         setSelectedTable(updatedTable as Table);
       }
+      invalidateTables();
 
       // Optimize grid if position changed
       const roomId = data.roomId || tableToUpdate?.roomId;
       if (roomId && (data.gridX !== undefined || data.gridY !== undefined)) {
-        const allRooms = await getAllRooms();
-        const room = allRooms.find((r) => r.id === roomId);
+        const allRooms = await fetchRooms(true);
+        const room = (allRooms as Room[]).find((r) => r.id === roomId);
         if (room) {
           const optimized = await optimizeRoomGrid(roomId, room.gridWidth, room.gridHeight);
           if (optimized.width !== room.gridWidth || optimized.height !== room.gridHeight) {
@@ -186,13 +194,13 @@ export default function TablesPage() {
     try {
       await reopenTable(tableId);
       // Update tables data without full reload
-      const updatedTables = await getAllTables();
+      const updatedTables = await fetchTables(true);
       setTables(updatedTables as Table[]);
       // Update active sales status
       await updateActiveSalesStatus(updatedTables as Table[]);
       // Update selected table if it's the one being reopened
       if (selectedTable?.id === tableId) {
-        const updatedTable = updatedTables.find((t) => t.id === tableId);
+        const updatedTable = (updatedTables as Table[]).find((t) => t.id === tableId);
         if (updatedTable) {
           setSelectedTable(updatedTable as Table);
           await checkActiveSales(tableId);
@@ -213,6 +221,7 @@ export default function TablesPage() {
       const hadPosition = tableToDelete.gridX !== null && tableToDelete.gridY !== null;
 
       await deleteTable(tableId);
+      invalidateTables();
       
       // Update local state immediately
       setTables(tables.filter((t) => t.id !== tableId));
@@ -223,8 +232,8 @@ export default function TablesPage() {
       // Optimize grid after deletion if table had a position
       if (roomId && hadPosition) {
         // Get fresh room data
-        const allRooms = await getAllRooms();
-        const room = allRooms.find((r) => r.id === roomId);
+        const allRooms = await fetchRooms(true);
+        const room = (allRooms as Room[]).find((r) => r.id === roomId);
         if (room) {
           const optimized = await optimizeRoomGrid(roomId, room.gridWidth, room.gridHeight);
           if (optimized.width !== room.gridWidth || optimized.height !== room.gridHeight) {
@@ -388,13 +397,13 @@ export default function TablesPage() {
           onClose={() => setIsProcessingPayment(false)}
           onSuccess={async () => {
             // Update tables data without full reload
-            const updatedTables = await getAllTables();
+            const updatedTables = await fetchTables(true);
             setTables(updatedTables as Table[]);
             // Update active sales status for all tables
             await updateActiveSalesStatus(updatedTables as Table[]);
             // Keep the table selected and update it with fresh data
             if (selectedTable) {
-              const updatedTable = updatedTables.find((t) => t.id === selectedTable.id);
+              const updatedTable = (updatedTables as Table[]).find((t) => t.id === selectedTable.id);
               if (updatedTable) {
                 setSelectedTable(updatedTable as Table);
                 // Check active sales after payment using the table ID

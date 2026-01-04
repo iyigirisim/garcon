@@ -5,7 +5,10 @@ import { Plus } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import React, { useEffect, useState } from "react"
 
+import "dayjs/locale/tr"
+
 dayjs.extend(advancedFormat)
+dayjs.locale("tr")
 
 export function NowBar() {
   const [now, setNow] = useState(dayjs())
@@ -26,7 +29,7 @@ export function Header() {
     <div className="space-y-4">
       <div className="flex items-start justify-between">
         <div>
-          <h1 className="text-3xl font-bold tracking-tight">POS Dashboard</h1>
+          <h1 className="text-3xl font-bold tracking-tight">POS Paneli</h1>
           <p className="text-muted-foreground">{range}</p>
         </div>
         <Button className="rounded-full" size="icon" aria-label="New">

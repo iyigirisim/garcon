@@ -124,6 +124,7 @@ export const initializeTablesForNewDay = async () => {
 };
 
 export const getAllTables = async () => {
+  console.time("Server: getAllTables");
   try {
     // Initialize tables for new day if needed
     await initializeTablesForNewDay();

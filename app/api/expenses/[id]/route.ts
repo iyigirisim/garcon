@@ -44,7 +44,7 @@ export async function PUT(
 ) {
   try {
     const body = await request.json();
-    const { amount, category, description, date } = body;
+    const { amount, category, description, date, image } = body;
 
     if (!amount || !category) {
       return NextResponse.json(
@@ -69,6 +69,7 @@ export async function PUT(
         category,
         description: description || null,
         date: date ? new Date(date) : new Date(),
+        image: image || null,
       },
       include: {
         createdBy: {

@@ -122,6 +122,7 @@ model Expense {
   amount         Float
   category       ExpenseCategory
   description    String?
+  image          String?
   createdById    String?
   createdBy      User?            @relation(fields: [createdById], references: [id])
 }
@@ -149,6 +150,7 @@ enum PaymentType {
   OTHER
 }
 
+
 enum ExpenseCategory {
   RENT
   BILL
@@ -157,3 +159,12 @@ enum ExpenseCategory {
   TAX
   OTHER
 }
+
+model Category {
+  id        String   @id @default(cuid())
+  name      String   @unique
+  color     String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+

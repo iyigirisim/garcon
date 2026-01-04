@@ -5,14 +5,14 @@ import { Home, ShoppingCart, Users, Receipt, BarChart3, Settings, Table2, Layout
 import { Button } from "@/components/ui/button"
 
 const items = [
-  { href: "/", icon: Home, label: "Home" },
-  { href: "/tables", icon: LayoutGrid, label: "Tables" },
-  { href: "/sales", icon: ShoppingCart, label: "Sales" },
-  { href: "/products", icon: BarChart3, label: "Products" },
-  { href: "/customers", icon: Users, label: "Customers" },
-  { href: "/reports", icon: Table2, label: "Reports" },
-  { href: "/expenses", icon: Receipt, label: "Expenses" },
-  { href: "/settings", icon: Settings, label: "Settings" },
+  { href: "/", icon: Home, label: "Ana Sayfa" },
+  { href: "/tables", icon: LayoutGrid, label: "Masalar" },
+
+  { href: "/products", icon: BarChart3, label: "Ürünler" },
+  { href: "/customers", icon: Users, label: "Müşteriler" },
+  { href: "/reports", icon: Table2, label: "Raporlar" },
+  { href: "/expenses", icon: Receipt, label: "Harcamalar" },
+  { href: "/settings", icon: Settings, label: "Ayarlar" },
 ]
 
 export function Sidebar({ className }: { className?: string }) {
@@ -27,10 +27,13 @@ export function Sidebar({ className }: { className?: string }) {
         {items.map((item) => {
           const Icon = item.icon
           return (
-            <Link key={item.href} href={item.href} aria-label={item.label} title={item.label} className="group">
+            <Link key={item.href} href={item.href} aria-label={item.label} className="group relative flex items-center justify-center">
               <Button variant="ghost" size="icon" className="h-12 w-12 rounded-2xl [&_svg]:size-6">
-                <Icon className="text-muted-foreground group-hover:text-foreground" />
+                <Icon className="text-muted-foreground group-hover:text-foreground transition-colors" />
               </Button>
+              <span className="absolute left-14 z-50 rounded-md bg-foreground px-3 py-1.5 text-sm font-medium text-background opacity-0 shadow-md transition-opacity duration-200 group-hover:opacity-100 pointer-events-none whitespace-nowrap">
+                {item.label}
+              </span>
             </Link>
           )
         })}

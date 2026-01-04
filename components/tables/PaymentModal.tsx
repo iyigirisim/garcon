@@ -15,7 +15,7 @@ const PaymentModal: React.FC<PaymentModalProps> = ({ table, onClose, onSuccess }
   const [sales, setSales] = useState<Sale[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [paymentType, setPaymentType] = useState<PaymentType>(PaymentType.CASH);
-  const [paidAmount, setPaidAmount] = useState<number | undefined>();
+  const [paidAmount, setPaidAmount] = useState<string>("");
   const [isOnCredit, setIsOnCredit] = useState(false);
   const [note, setNote] = useState("");
   
@@ -86,7 +86,7 @@ const PaymentModal: React.FC<PaymentModalProps> = ({ table, onClose, onSuccess }
   // Auto-update paid amount when selections change in partial payment mode
   useEffect(() => {
     if (isPartialPayment) {
-      setPaidAmount(totalAmount);
+      setPaidAmount(totalAmount.toString());
     }
   }, [totalAmount, isPartialPayment]);
 
@@ -98,14 +98,17 @@ const PaymentModal: React.FC<PaymentModalProps> = ({ table, onClose, onSuccess }
   ];
 
   const calculateChange = () => {
-    if (!paidAmount || paidAmount <= totalAmount) return 0;
-    return paidAmount - totalAmount;
+    const paid = parseFloat(paidAmount) || 0;
+    if (!paid || paid <= totalAmount) return 0;
+    return paid - totalAmount;
   };
 
   const handlePayment = async () => {
     if (!table) return;
 
-    if (!isOnCredit && (!paidAmount || paidAmount < totalAmount)) {
+    const paid = parseFloat(paidAmount) || 0;
+
+    if (!isOnCredit && (!paid || paid < totalAmount)) {
       alert("Alınan tutar toplam tutardan az olamaz");
       return;
     }
@@ -149,7 +152,7 @@ const PaymentModal: React.FC<PaymentModalProps> = ({ table, onClose, onSuccess }
                 isPaid: !isOnCredit,
                 paidAt: isOnCredit ? null : new Date().toISOString(),
                 paymentType: isOnCredit ? null : paymentType,
-                paidAmount: isOnCredit ? null : (paidAmount || totalAmount), // This logic is slightly flawed if splitting across multiple sales with one payment amount, but for now assuming one sale or proportional
+                paidAmount: isOnCredit ? null : (paid || totalAmount), // This logic is slightly flawed if splitting across multiple sales with one payment amount, but for now assuming one sale or proportional
                 // Note: If multiple sales are involved, paidAmount distribution is complex. 
                 // Creating a simplification: if partial items come from multiple sales, we treat prompt amount as total for all.
                 // But normally we'd loop. For now let's assume one active sale mostly. 
@@ -179,7 +182,7 @@ const PaymentModal: React.FC<PaymentModalProps> = ({ table, onClose, onSuccess }
               isPaid: !isOnCredit,
               paidAt: isOnCredit ? null : new Date().toISOString(),
               paymentType: isOnCredit ? null : paymentType,
-              paidAmount: isOnCredit ? null : paidAmount || totalAmount,
+              paidAmount: isOnCredit ? null : paid || totalAmount,
               isOnCredit,
               note: note || null,
             }),
@@ -327,13 +330,18 @@ const PaymentModal: React.FC<PaymentModalProps> = ({ table, onClose, onSuccess }
                 <label className="block text-sm font-medium text-gray-700">Alınan Tutar</label>
                 <div className="relative">
                   <span className="absolute left-3 top-2 text-gray-500">₺</span>
-                  <input
-                    type="number"
-                    step="0.01"
-                    min="0"
+                   <input
+                    type="text"
                     placeholder={totalAmount.toFixed(2)}
-                    value={paidAmount?.toString() || ""}
-                    onChange={(e) => setPaidAmount(e.target.value ? parseFloat(e.target.value) : undefined)}
+                    value={paidAmount}
+                    onChange={(e) => {
+                         const val = e.target.value;
+                         if (val === "" || /^\d*\.?\d*$/.test(val)) {
+                             setPaidAmount(val);
+                         } else {
+                             alert("Lütfen geçerli bir sayı giriniz");
+                         }
+                    }}
                     className="w-full pl-8 pr-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-transparent"
                   />
                 </div>
@@ -342,13 +350,13 @@ const PaymentModal: React.FC<PaymentModalProps> = ({ table, onClose, onSuccess }
                 {!isPartialPayment && (
                   <div className="flex space-x-2">
                     <button
-                      onClick={() => setPaidAmount(totalAmount)}
+                      onClick={() => setPaidAmount(totalAmount.toString())}
                       className="px-3 py-1 text-sm bg-gray-200 text-gray-700 rounded hover:bg-gray-300 transition-colors"
                     >
                       Tam
                     </button>
                     <button
-                      onClick={() => setPaidAmount(Math.ceil(totalAmount / 10) * 10)}
+                      onClick={() => setPaidAmount((Math.ceil(totalAmount / 10) * 10).toString())}
                       className="px-3 py-1 text-sm bg-gray-200 text-gray-700 rounded hover:bg-gray-300 transition-colors"
                     >
                       Yuvarla
@@ -358,7 +366,7 @@ const PaymentModal: React.FC<PaymentModalProps> = ({ table, onClose, onSuccess }
               </div>
 
               {/* Change Calculation */}
-              {paidAmount && paidAmount > totalAmount && (
+              {paidAmount && (parseFloat(paidAmount) || 0) > totalAmount && (
                 <div className="p-3 bg-blue-50 border border-blue-200 rounded-lg">
                   <div className="flex justify-between items-center">
                     <span className="text-blue-700 font-medium">Para üstü:</span>
@@ -370,12 +378,12 @@ const PaymentModal: React.FC<PaymentModalProps> = ({ table, onClose, onSuccess }
               )}
 
               {/* Insufficient Payment Warning */}
-              {paidAmount && paidAmount < totalAmount && (
+              {paidAmount && (parseFloat(paidAmount) || 0) < totalAmount && (
                 <div className="p-3 bg-red-50 border border-red-200 rounded-lg">
                   <div className="flex justify-between items-center">
                     <span className="text-red-700 font-medium">Kalan tutar:</span>
                     <span className="text-red-800 font-bold">
-                      ₺{(totalAmount - paidAmount).toFixed(2)}
+                      ₺{(totalAmount - (parseFloat(paidAmount) || 0)).toFixed(2)}
                     </span>
                   </div>
                 </div>
@@ -401,7 +409,7 @@ const PaymentModal: React.FC<PaymentModalProps> = ({ table, onClose, onSuccess }
             onClick={handlePayment}
             // Logic: disabled if loading OR (not credit AND (paid amount missing OR less than total))
             // Exception: if partial payment, 'totalAmount' is only the selected amount, so same logic applies.
-            disabled={isLoading || (!isOnCredit && (!paidAmount || paidAmount < totalAmount))}
+            disabled={isLoading || (!isOnCredit && (!paidAmount || (parseFloat(paidAmount) || 0) < totalAmount))}
             className="w-full px-4 py-3 bg-emerald-600 text-white rounded-lg hover:bg-emerald-700 disabled:bg-gray-400 transition-colors font-medium"
           >
             {isLoading ? "İşleniyor..." : isOnCredit ? "Veresiye Kaydet" : (isPartialPayment ? "Parçalı Ödemeyi Tamamla" : "Ödemeyi Tamamla")}

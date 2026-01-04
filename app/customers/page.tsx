@@ -138,8 +138,8 @@ export default function CustomersPage() {
   if (loading) {
     return (
       <div className="p-6">
-        <h1 className="text-4xl font-bold mb-6">Customers</h1>
-        <div>Loading...</div>
+        <h1 className="text-4xl font-bold mb-6">Müşteriler</h1>
+        <div>Yükleniyor...</div>
       </div>
     );
   }
@@ -147,18 +147,18 @@ export default function CustomersPage() {
   return (
     <div className="p-6">
       <div className="flex justify-between items-center mb-6">
-        <h1 className="text-4xl font-bold">Customers</h1>
-        <Button onClick={() => setShowForm(true)}>Add Customer</Button>
+        <h1 className="text-4xl font-bold">Müşteriler</h1>
+        <Button onClick={() => setShowForm(true)}>Müşteri Ekle</Button>
       </div>
 
       <Dialog open={showForm} onOpenChange={setShowForm}>
         <DialogContent className="max-w-lg">
           <DialogHeader>
-            <DialogTitle>{editingCustomer ? "Edit Customer" : "Add New Customer"}</DialogTitle>
+            <DialogTitle>{editingCustomer ? "Müşteriyi Düzenle" : "Yeni Müşteri Ekle"}</DialogTitle>
           </DialogHeader>
           <form onSubmit={handleSubmit} className="space-y-4">
             <div>
-              <label className="block text-sm font-medium mb-1">Name *</label>
+              <label className="block text-sm font-medium mb-1">İsim *</label>
               <input
                 type="text"
                 required
@@ -169,7 +169,7 @@ export default function CustomersPage() {
             </div>
 
             <div>
-              <label className="block text-sm font-medium mb-1">Email</label>
+              <label className="block text-sm font-medium mb-1">E-posta</label>
               <input
                 type="email"
                 value={formData.email}
@@ -179,7 +179,7 @@ export default function CustomersPage() {
             </div>
 
             <div>
-              <label className="block text-sm font-medium mb-1">Phone</label>
+              <label className="block text-sm font-medium mb-1">Telefon</label>
               <input
                 type="tel"
                 value={formData.phone}
@@ -189,24 +189,24 @@ export default function CustomersPage() {
             </div>
 
             <div>
-              <label className="block text-sm font-medium mb-1">Role</label>
+              <label className="block text-sm font-medium mb-1">Rol</label>
               <select
                 value={formData.role}
                 onChange={(e) => setFormData({ ...formData, role: e.target.value as UserRole })}
                 className="w-full p-2 border border-gray-300 rounded-md"
               >
-                <option value={UserRole.CUSTOMER}>Customer</option>
-                <option value={UserRole.STAFF}>Staff</option>
-                <option value={UserRole.ADMIN}>Admin</option>
+                <option value={UserRole.CUSTOMER}>Müşteri</option>
+                <option value={UserRole.STAFF}>Personel</option>
+                <option value={UserRole.ADMIN}>Yönetici</option>
               </select>
             </div>
 
             <DialogFooter>
               <Button type="button" variant="outline" onClick={resetForm}>
-                Cancel
+                İptal
               </Button>
               <Button type="submit" disabled={submitting}>
-                {submitting ? "Saving..." : (editingCustomer ? "Update" : "Create")}
+                {submitting ? "Kaydediliyor..." : (editingCustomer ? "Güncelle" : "Oluştur")}
               </Button>
             </DialogFooter>
           </form>
@@ -218,12 +218,12 @@ export default function CustomersPage() {
           <Table>
             <TableHeader>
               <TableRow>
-                <TableHead>Name</TableHead>
-                <TableHead>Email</TableHead>
-                <TableHead>Phone</TableHead>
-                <TableHead>Role</TableHead>
-                <TableHead>Created At</TableHead>
-                <TableHead>Actions</TableHead>
+                <TableHead>İsim</TableHead>
+                <TableHead>E-posta</TableHead>
+                <TableHead>Telefon</TableHead>
+                <TableHead>Rol</TableHead>
+                <TableHead>Oluşturulma Tarihi</TableHead>
+                <TableHead>İşlemler</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
@@ -260,7 +260,7 @@ export default function CustomersPage() {
                       variant="outline"
                       onClick={() => handleEdit(customer)}
                     >
-                      Edit
+                      Düzenle
                     </Button>
                     <Button
                       size="sm"
@@ -268,7 +268,7 @@ export default function CustomersPage() {
                       onClick={() => handleDelete(customer.id)}
                       className="text-red-600 hover:text-red-800"
                     >
-                      Delete
+                      Sil
                     </Button>
                   </TableCell>
                 </TableRow>
@@ -279,7 +279,7 @@ export default function CustomersPage() {
 
         {customers.length === 0 && (
           <div className="text-center py-8 text-gray-500">
-            No customers found. Add your first customer to get started.
+            Müşteri bulunamadı. İlk müşterinizi ekleyerek başlayın.
           </div>
         )}
       </div>

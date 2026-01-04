@@ -2,9 +2,23 @@ import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/utils/db/prisma";
 import { ExpenseCategory } from "@/types/expense";
 
-export async function GET() {
+export async function GET(request: NextRequest) {
   try {
+    const { searchParams } = new URL(request.url);
+    const start = searchParams.get("start");
+    const end = searchParams.get("end");
+
+    const where: any = {};
+
+    if (start && end) {
+      where.date = {
+        gte: new Date(start),
+        lte: new Date(end),
+      };
+    }
+
     const expenses = await prisma.expense.findMany({
+      where,
       orderBy: {
         date: "desc",
       },
@@ -28,10 +42,11 @@ export async function GET() {
   }
 }
 
+
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json();
-    const { amount, category, description, date } = body;
+    const { amount, category, description, date, image } = body;
 
     if (!amount || !category) {
       return NextResponse.json(
@@ -53,6 +68,7 @@ export async function POST(request: NextRequest) {
         category,
         description: description || null,
         date: date ? new Date(date) : new Date(),
+        image: image || null,
       },
       include: {
         createdBy: {

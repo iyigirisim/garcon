@@ -1,6 +1,8 @@
 "use client";
 
 import { useState, useCallback } from "react";
+import { getAllRooms } from "@/actions/room";
+import { getAllTables, getActiveSalesTableIds } from "@/actions/table";
 
 interface CacheData<T> {
   data: T;
@@ -139,11 +141,20 @@ export const useCustomersCache = () => {
 export const useExpensesCache = () => {
   const cache = useDataCache<any[]>();
 
-  const fetchExpenses = useCallback(async (forceRefresh = false) => {
+  const fetchExpenses = useCallback(async (startDate?: string, endDate?: string, forceRefresh = false) => {
+    const key = startDate && endDate ? `expenses-${startDate}-${endDate}` : 'expenses-all';
+    
     return cache.fetchWithCache(
-      'expenses',
+      key,
       async () => {
-        const response = await fetch('/api/expenses');
+        const params = new URLSearchParams();
+        if (startDate) params.append('start', startDate);
+        if (endDate) params.append('end', endDate);
+        
+        const queryString = params.toString();
+        const url = `/api/expenses${queryString ? `?${queryString}` : ''}`;
+        
+        const response = await fetch(url);
         if (!response.ok) throw new Error('Failed to fetch expenses');
         return response.json();
       },
@@ -152,7 +163,7 @@ export const useExpensesCache = () => {
   }, [cache]);
 
   const invalidateExpenses = useCallback(() => {
-    cache.invalidateCache('expenses');
+    cache.invalidateCache(); // Simple invalidation for now, clears all cache
   }, [cache]);
 
   return {
@@ -160,4 +171,46 @@ export const useExpensesCache = () => {
     fetchExpenses,
     invalidateExpenses,
   };
+};
+
+export const useTablesDataCache = () => {
+    const cache = useDataCache<any>();
+
+    const fetchRooms = useCallback(async (forceRefresh = false) => {
+        return cache.fetchWithCache(
+            'rooms',
+            async () => getAllRooms(),
+            forceRefresh
+        );
+    }, [cache]);
+
+    const fetchTables = useCallback(async (forceRefresh = false) => {
+        return cache.fetchWithCache(
+            'tables',
+            async () => getAllTables(),
+            forceRefresh
+        );
+    }, [cache]);
+
+    const fetchActiveSalesTableIds = useCallback(async (forceRefresh = false) => {
+        return cache.fetchWithCache(
+            'active-sales-table-ids',
+            async () => getActiveSalesTableIds(),
+            forceRefresh
+        );
+    }, [cache]);
+
+    const invalidateRooms = useCallback(() => cache.invalidateCache('rooms'), [cache]);
+    const invalidateTables = useCallback(() => cache.invalidateCache('tables'), [cache]);
+    const invalidateActiveSales = useCallback(() => cache.invalidateCache('active-sales-table-ids'), [cache]);
+
+    return {
+        loading: cache.loading,
+        fetchRooms,
+        fetchTables,
+        fetchActiveSalesTableIds,
+        invalidateRooms,
+        invalidateTables,
+        invalidateActiveSales
+    };
 };
