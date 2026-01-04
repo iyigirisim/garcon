@@ -33,6 +33,7 @@ interface ExpenseFormData {
   description: string;
   date: string;
   image?: string;
+  isPaidFromSafe: boolean;
 }
 
 const initialFormData: ExpenseFormData = {
@@ -41,6 +42,7 @@ const initialFormData: ExpenseFormData = {
   description: "",
   date: new Date().toISOString().split('T')[0],
   image: "",
+  isPaidFromSafe: true,
 };
 
 const categoryLabels = {
@@ -149,7 +151,8 @@ export default function ExpensesPage() {
       
       const payload = {
         ...formData,
-        amount: parseFloat(formData.amount) || 0
+        amount: parseFloat(formData.amount) || 0,
+        isPaidFromSafe: formData.isPaidFromSafe,
       };
 
       const response = await fetch(url, {
@@ -182,6 +185,7 @@ export default function ExpensesPage() {
       description: expense.description || "",
       date: new Date(expense.date).toISOString().split('T')[0],
       image: (expense as any).image || "",
+      isPaidFromSafe: expense.isPaidFromSafe !== undefined ? expense.isPaidFromSafe : true,
     });
     setShowForm(true);
   };
@@ -349,6 +353,30 @@ export default function ExpensesPage() {
               </div>
             </div>
 
+            <div>
+              <label className="block text-sm font-medium mb-1">Ödeme Yöntemi</label>
+              <div className="flex gap-4">
+                <label className="flex items-center space-x-2 cursor-pointer">
+                  <input
+                    type="radio"
+                    checked={formData.isPaidFromSafe}
+                    onChange={() => setFormData({ ...formData, isPaidFromSafe: true })}
+                    className="w-4 h-4 text-emerald-600 border-gray-300 focus:ring-emerald-500"
+                  />
+                  <span>Kasa (Nakit)</span>
+                </label>
+                <label className="flex items-center space-x-2 cursor-pointer">
+                  <input
+                    type="radio"
+                    checked={!formData.isPaidFromSafe}
+                    onChange={() => setFormData({ ...formData, isPaidFromSafe: false })}
+                    className="w-4 h-4 text-emerald-600 border-gray-300 focus:ring-emerald-500"
+                  />
+                  <span>Kredi Kartı / Banka</span>
+                </label>
+              </div>
+            </div>
+
             <DialogFooter>
               <Button type="button" variant="outline" onClick={resetForm}>
                 İptal
@@ -405,6 +433,9 @@ export default function ExpensesPage() {
                   <TableCell>
                     <div className="text-sm font-medium text-red-600">
                       {formatCurrency(expense.amount)}
+                    </div>
+                    <div className="text-xs text-gray-500">
+                      {expense.isPaidFromSafe ? "Nakit" : "Kredi Kartı"}
                     </div>
                   </TableCell>
                   <TableCell>

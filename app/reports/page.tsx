@@ -3,7 +3,6 @@ import DateNavigator from "@/components/reports/DateNavigator";
 import StatsCards from "@/components/reports/StatsCards";
 import ProductBreakdown from "@/components/reports/ProductBreakdown";
 import PaymentBreakdown from "@/components/reports/PaymentBreakdown";
-import ExpensesList from "@/components/reports/ExpensesList";
 
 export default async function ReportsPage({
   searchParams,
@@ -34,7 +33,6 @@ export default async function ReportsPage({
                  
                  <div className="flex-1 space-y-6">
                     <PaymentBreakdown payments={data.paymentMethods} />
-                    {/* <ExpensesList expenses={data.expenses} /> */}
                  </div>
             </div>
         </div>

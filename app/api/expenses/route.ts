@@ -46,7 +46,7 @@ export async function GET(request: NextRequest) {
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json();
-    const { amount, category, description, date, image } = body;
+    const { amount, category, description, date, image, isPaidFromSafe } = body;
 
     if (!amount || !category) {
       return NextResponse.json(
@@ -69,6 +69,7 @@ export async function POST(request: NextRequest) {
         description: description || null,
         date: date ? new Date(date) : new Date(),
         image: image || null,
+        isPaidFromSafe: isPaidFromSafe !== undefined ? isPaidFromSafe : true,
       },
       include: {
         createdBy: {

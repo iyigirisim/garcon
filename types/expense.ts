@@ -13,7 +13,7 @@ export type Expense = {
   id: string;
   date: Date;
   amount: number;
-  paymentType: PaymentType;
+  isPaidFromSafe: boolean;
   category: ExpenseCategory;
   description?: string | null;
   createdById?: string | null;

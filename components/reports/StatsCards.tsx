@@ -9,7 +9,7 @@ interface StatsProps {
 
 export default function StatsCards({ revenue, expense, profit, cashInHand }: StatsProps) {
     const formatCurrency = (val: number) => {
-        return new Intl.NumberFormat('tr-TR', { style: 'currency', currency: 'TRY' }).format(val);
+        return new Intl.NumberFormat('tr-TR', { style: 'currency', currency: 'TRY' }).format(val || 0);
     };
 
     return (
@@ -27,7 +27,7 @@ export default function StatsCards({ revenue, expense, profit, cashInHand }: Sta
             <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-100 flex items-center justify-between">
                 <div>
                     <p className="text-sm text-gray-500 mb-1">Giderler</p>
-                    <h3 className="text-2xl font-bold text-gray-800">{formatCurrency(expense)}</h3>
+                    <h3 className="text-2xl font-bold text-gray-800">{formatCurrency(expense ?? 0)}</h3>
                 </div>
                 <div className="p-3 bg-red-50 rounded-lg text-red-600">
                     <TrendingDown size={24} />

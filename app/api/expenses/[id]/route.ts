@@ -44,7 +44,7 @@ export async function PUT(
 ) {
   try {
     const body = await request.json();
-    const { amount, category, description, date, image } = body;
+    const { amount, category, description, date, image, isPaidFromSafe } = body;
 
     if (!amount || !category) {
       return NextResponse.json(
@@ -70,6 +70,7 @@ export async function PUT(
         description: description || null,
         date: date ? new Date(date) : new Date(),
         image: image || null,
+        isPaidFromSafe: isPaidFromSafe !== undefined ? isPaidFromSafe : true,
       },
       include: {
         createdBy: {
